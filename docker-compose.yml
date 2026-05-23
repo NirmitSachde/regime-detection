@@ -1,0 +1,55 @@
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    image: regime-detection:latest
+    container_name: regime-app
+    ports:
+      - "8501:8501"
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      PREFECT_API_URL: http://prefect:4200/api
+      DATA_DIR: /app/data
+      DUCKDB_PATH: /app/data/warehouse.duckdb
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./dbt:/app/dbt
+    depends_on:
+      - mlflow
+      - prefect
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.18.0
+    container_name: regime-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/mlruns:/mlruns
+      - ./data/mlartifacts:/mlartifacts
+    command: >
+      mlflow server
+      --backend-store-uri file:///mlruns
+      --default-artifact-root file:///mlartifacts
+      --host 0.0.0.0
+      --port 5000
+    restart: unless-stopped
+
+  prefect:
+    image: prefecthq/prefect:3-latest
+    container_name: regime-prefect
+    ports:
+      - "4200:4200"
+    environment:
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_API_URL: http://localhost:4200/api
+    volumes:
+      - prefect-data:/root/.prefect
+    command: prefect server start --host 0.0.0.0
+    restart: unless-stopped
+
+volumes:
+  prefect-data:

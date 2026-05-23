@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: stg_prices
+    description: "Typed, filtered OHLCV. One row per (ticker, trade_date)."
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: trade_date
+        tests: [not_null]
+      - name: adj_close
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [ticker, trade_date]
+
+  - name: stg_macro
+    description: "Typed FRED macro series, missing values dropped."
+    columns:
+      - name: series_id
+        tests: [not_null]
+      - name: observation_date
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [series_id, observation_date]

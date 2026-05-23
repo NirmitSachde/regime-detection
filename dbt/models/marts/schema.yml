@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: mart_features
+    description: "Wide feature table for ML training. One row per (ticker, trade_date)."
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: trade_date
+        tests: [not_null]
+      - name: log_ret_1d
+        description: "Same-day log return. NOT a feature for predicting day t — use lagged variants."
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: "{{ var('return_min') }}"
+              max_value: "{{ var('return_max') }}"
+              inclusive: true
+              where: "log_ret_1d is not null"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [ticker, trade_date]
+
+  - name: mart_macro_features
+    description: "Macro panel — one row per trade_date."
+    columns:
+      - name: feature_date
+        tests: [not_null, unique]

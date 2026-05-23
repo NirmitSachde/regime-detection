@@ -1,0 +1,39 @@
+name: regime
+version: "1.0.0"
+config-version: 2
+
+profile: regime
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+require-dbt-version: ">=1.8.0"
+
+models:
+  regime:
+    +materialized: view
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: table
+    marts:
+      +schema: marts
+      +materialized: table
+
+vars:
+  # Returns sanity bounds — daily returns outside this are almost certainly bad data
+  return_min: -0.5
+  return_max: 0.5
+  # Freshness SLA — warehouse should be no more than this many trading days stale
+  freshness_max_business_days: 2

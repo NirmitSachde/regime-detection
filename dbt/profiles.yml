@@ -1,0 +1,14 @@
+regime:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '../data/warehouse.duckdb') }}"
+      threads: 4
+      extensions:
+        - parquet
+    ci:
+      type: duckdb
+      # In CI we use an ephemeral in-memory DB and synthetic seeds
+      path: ":memory:"
+      threads: 2
