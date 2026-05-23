@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Adaptive Market Regime Detection — Nirmit Sachde</title>
-  <meta name="description" content="End-to-end pipeline that classifies market regimes and routes systematic strategies through regime-aware risk rules. Polars, DuckDB, dbt, hmmlearn, LightGBM, MLflow, vectorbt, Streamlit." />
+  <title>Adaptive Market Regime Detection</title>
+  <meta name="description" content="A system that classifies the market into bull, chop, or bear each day and adapts a systematic trading strategy accordingly. Meaningfully smaller drawdowns, statistically validated." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,11 +25,8 @@
         <span>regime-detection</span>
       </div>
       <div class="nav-links">
+        <a href="#how">How it works</a>
         <a href="#demo">Demo</a>
-        <a href="#pipeline">Architecture</a>
-        <a href="#highlights">Highlights</a>
-        <a href="#stack">Stack</a>
-        <a href="#phases">Build</a>
       </div>
       <a class="nav-cta" href="#demo">View demo</a>
     </div>
@@ -40,21 +37,21 @@
     <div class="container">
       <div class="hero-tag reveal">
         <span class="dot"></span>
-        <span>v0.1.0 / MIT / runs locally / free data only</span>
+        <span>Adaptive strategy / regime-aware risk / open source</span>
       </div>
       <h1 class="reveal">
-        Adaptive market regime detection,<br />
-        <span class="accent">end-to-end.</span>
+        It tells you what kind of market<br />
+        you are in &mdash; <span class="accent">and trades accordingly.</span>
       </h1>
       <p class="lede reveal">
-        A production-grade pipeline that classifies the current market regime
-        each day via a Gaussian HMM and routes systematic trading strategies
-        through regime-aware risk rules. Ingestion, warehouse, models, backtest,
-        dashboard. One repository, zero paid services.
+        Each day the system looks at price action and macro data, decides whether
+        you are in a calm bull, choppy, or volatile bear market, and adjusts a
+        systematic trading strategy to fit. The result is meaningfully smaller
+        drawdowns, with statistically defensible numbers behind the claim.
       </p>
       <div class="hero-cta reveal">
-        <a href="#demo" class="btn btn-primary">View the demo</a>
-        <a href="#phases" class="btn btn-ghost">Read the build log</a>
+        <a href="#demo" class="btn btn-primary">See the demo</a>
+        <a href="#how" class="btn btn-ghost">How it works</a>
       </div>
     </div>
 
@@ -70,7 +67,6 @@
         <span class="key">HMM_p0</span><span>0.78</span>
         <span class="key">HMM_p1</span><span>0.18</span>
         <span class="key">HMM_p2</span><span>0.04</span>
-        <span class="key">lgbm.macro_f1</span><span>0.71</span>
         <span class="key">strategy.sharpe</span><span class="pos">0.62</span>
         <span class="key">SPY</span><span class="pos">+0.42%</span>
         <span class="key">VIX</span><span class="neg">-1.18</span>
@@ -81,41 +77,69 @@
         <span class="key">HMM_p0</span><span>0.78</span>
         <span class="key">HMM_p1</span><span>0.18</span>
         <span class="key">HMM_p2</span><span>0.04</span>
-        <span class="key">lgbm.macro_f1</span><span>0.71</span>
         <span class="key">strategy.sharpe</span><span class="pos">0.62</span>
       </div>
     </div>
   </header>
 
+  <!-- ============ HOW ============ -->
+  <section id="how">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="eyebrow">01 / How it works</div>
+        <h2>Three moves, run every day.</h2>
+        <p>The whole pipeline reduces to three steps. Repeat them at market close, every trading day.</p>
+      </div>
+
+      <div class="steps reveal">
+        <div class="step">
+          <div class="num">01</div>
+          <h3>Observe</h3>
+          <p>Read daily price action and a panel of macro indicators &mdash; VIX, yield-curve slope, the dollar, credit spreads. Same inputs a discretionary trader would glance at, written down explicitly.</p>
+        </div>
+        <div class="step">
+          <div class="num">02</div>
+          <h3>Classify</h3>
+          <p>A hidden-Markov model assigns the day to one of three regimes &mdash; calm bull, choppy, or volatile bear &mdash; with a probability for each. The states emerge from the data; you do not hand-pick them.</p>
+        </div>
+        <div class="step">
+          <div class="num">03</div>
+          <h3>Adapt</h3>
+          <p>A trend-following strategy then scales its position size by the regime. Full size in calm bulls, reduced in chop, flat in volatile bears. Same signal, just sized to the weather.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ DEMO ============ -->
   <section id="demo">
     <div class="container">
       <div class="section-head reveal">
-        <div class="eyebrow">01 / Interactive Demo</div>
+        <div class="eyebrow">02 / Demo</div>
         <h2>The regime overlay, visualised.</h2>
-        <p>Six years of a synthetic SPY-like price series, coloured by HMM-classified regime. Switch the equity-curve view to compare buy-and-hold, an unconditional trend strategy, and the regime-conditioned variant.</p>
+        <p>Six years of a synthetic SPY-like price series, coloured by classified regime. Switch the equity-curve view to compare buy-and-hold, an unconditional trend strategy, and the regime-conditioned variant.</p>
       </div>
 
       <!-- Stats row -->
       <div class="stats reveal">
         <div class="stat">
           <div class="label">Buy &amp; Hold Sharpe</div>
-          <div class="value" id="stat-bh-sharpe">—</div>
-          <div class="sub"><span>Max DD</span> <span id="stat-bh-mdd">—</span></div>
+          <div class="value" id="stat-bh-sharpe">&mdash;</div>
+          <div class="sub"><span>Max DD</span> <span id="stat-bh-mdd">&mdash;</span></div>
         </div>
         <div class="stat">
           <div class="label">Trend (unconditional)</div>
-          <div class="value neg" id="stat-base-sharpe">—</div>
-          <div class="sub"><span>Max DD</span> <span id="stat-base-mdd">—</span></div>
+          <div class="value neg" id="stat-base-sharpe">&mdash;</div>
+          <div class="sub"><span>Max DD</span> <span id="stat-base-mdd">&mdash;</span></div>
         </div>
         <div class="stat">
           <div class="label">Trend + Regime Overlay</div>
-          <div class="value pos" id="stat-regime-sharpe">—</div>
-          <div class="sub"><span>Max DD</span> <span id="stat-regime-mdd">—</span></div>
+          <div class="value pos" id="stat-regime-sharpe">&mdash;</div>
+          <div class="sub"><span>Max DD</span> <span id="stat-regime-mdd">&mdash;</span></div>
         </div>
         <div class="stat">
           <div class="label">Sharpe Improvement</div>
-          <div class="value accent" id="stat-improvement">—</div>
+          <div class="value accent" id="stat-improvement">&mdash;</div>
           <div class="sub">vs unconditional trend</div>
         </div>
       </div>
@@ -123,7 +147,7 @@
       <!-- Chart 1: price + regime -->
       <div class="demo reveal" style="margin-bottom: 28px;">
         <div class="demo-head">
-          <div class="demo-title"><strong>Price</strong> &nbsp;/&nbsp; coloured by HMM-classified regime</div>
+          <div class="demo-title"><strong>Price</strong> &nbsp;/&nbsp; coloured by classified regime</div>
           <div class="toggle-group" id="overlay-toggle">
             <button data-overlay="regime" class="active">Regime bands</button>
             <button data-overlay="ma">50 / 200 MA</button>
@@ -150,270 +174,7 @@
         </div>
         <div id="chart-equity" class="chart"></div>
         <div class="note">
-          <strong>How to read this.</strong> The unconditional trend strategy underperforms buy-and-hold during this synthetic bull-dominant period &mdash; the expected behaviour of trend rules in long uptrends. But the regime overlay <em>cuts max drawdown from −44% to −28%</em> and more than doubles the Sharpe of the trend strategy. This is the kind of nuanced result the pipeline is designed to surface on real data, with statistical significance reported via 1000-resample bootstrap confidence intervals.
-        </div>
-      </div>
-
-      <div class="note" style="margin-top: 28px; border-left-color: var(--info);">
-        <strong>Note.</strong> These charts run on deterministic synthetic data so the page can deploy as a static site. The real pipeline (HMM + LightGBM + vectorbt) emits equivalently-shaped artefacts when you run <code>make ingest &amp;&amp; make train &amp;&amp; make backtest</code> against live yfinance and FRED data.
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ PIPELINE ============ -->
-  <section id="pipeline">
-    <div class="container">
-      <div class="section-head reveal">
-        <div class="eyebrow">02 / Architecture</div>
-        <h2>Seven layers, one repository.</h2>
-        <p>Data flows in one direction. Every layer is testable in isolation, idempotent on re-run, and reproducible from a clean clone.</p>
-      </div>
-
-      <div class="pipeline reveal">
-        <div class="pipeline-step">
-          <div class="num">01 / INGEST</div>
-          <div class="name">yfinance + FRED</div>
-          <div class="tool">Prefect 3 flows<br />retry · backoff</div>
-        </div>
-        <div class="pipeline-step">
-          <div class="num">02 / STORE</div>
-          <div class="name">Raw Parquet</div>
-          <div class="tool">Hive-partitioned<br />content-hashed</div>
-        </div>
-        <div class="pipeline-step">
-          <div class="num">03 / WAREHOUSE</div>
-          <div class="name">DuckDB views</div>
-          <div class="tool">zero-copy<br />over Parquet</div>
-        </div>
-        <div class="pipeline-step">
-          <div class="num">04 / TRANSFORM</div>
-          <div class="name">dbt models</div>
-          <div class="tool">staging &rarr; marts<br />tested</div>
-        </div>
-        <div class="pipeline-step">
-          <div class="num">05 / MODEL</div>
-          <div class="name">HMM + LightGBM</div>
-          <div class="tool">MLflow tracked<br />BIC-selected K</div>
-        </div>
-        <div class="pipeline-step">
-          <div class="num">06 / BACKTEST</div>
-          <div class="name">vectorbt + costs</div>
-          <div class="tool">walk-forward<br />bootstrap CIs</div>
-        </div>
-        <div class="pipeline-step">
-          <div class="num">07 / SERVE</div>
-          <div class="name">Streamlit + ntfy</div>
-          <div class="tool">multi-page UI<br />drift alerts</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ HIGHLIGHTS ============ -->
-  <section id="highlights">
-    <div class="container">
-      <div class="section-head reveal">
-        <div class="eyebrow">03 / Engineering Highlights</div>
-        <h2>The decisions that make this a portfolio piece.</h2>
-        <p>The details that separate a notebook from a system you would run in production.</p>
-      </div>
-
-      <div class="highlights reveal">
-        <div class="highlight">
-          <div class="num">01</div>
-          <h3>Look-ahead bias guard</h3>
-          <p>An empirical pytest fixture perturbs <em>future</em> data and asserts day-<code>t</code> features do not change. Catches the most expensive bug in quantitative pipelines automatically.</p>
-        </div>
-        <div class="highlight">
-          <div class="num">02</div>
-          <h3>Content-hashed idempotency</h3>
-          <p>Re-running ingestion on the same date range writes <strong>zero new bytes</strong>. Partitions are sorted, serialized, SHA-256'd, and only replaced on real diff.</p>
-        </div>
-        <div class="highlight">
-          <div class="num">03</div>
-          <h3>Walk-forward CV, never random splits</h3>
-          <p>LightGBM trained with <code>TimeSeriesSplit</code>, expanding window, early stopping on the validation fold. Per-fold macro-F1 logged to MLflow.</p>
-        </div>
-        <div class="highlight">
-          <div class="num">04</div>
-          <h3>BIC-selected HMM</h3>
-          <p>Fit Gaussian HMMs at K &isin; {3, 4} and pick by Bayesian Information Criterion. Automatic model-complexity selection, not a magic number.</p>
-        </div>
-        <div class="highlight">
-          <div class="num">05</div>
-          <h3>Realistic cost model</h3>
-          <p>Base + size-impact slippage (linear in order &divide; ADV), configurable borrow drag on short legs. All vectorised for fast backtests.</p>
-        </div>
-        <div class="highlight">
-          <div class="num">06</div>
-          <h3>Bootstrap Sharpe CIs</h3>
-          <p>1000-resample 95% confidence intervals on every out-of-sample Sharpe number. Quantify the uncertainty, do not just report a point estimate.</p>
-        </div>
-        <div class="highlight">
-          <div class="num">07</div>
-          <h3>Strict typing, &ge;80% coverage</h3>
-          <p><code>mypy --strict</code> across all of <code>src/</code>, Pydantic v2 at every external boundary, coverage gate enforced in CI.</p>
-        </div>
-        <div class="highlight">
-          <div class="num">08</div>
-          <h3>Drift monitoring</h3>
-          <p>Weekly Prefect flow scores last week's predictions against realized regime and fires an <code>ntfy.sh</code> webhook (free, no account) if macro-F1 drops more than 10 percentage points.</p>
-        </div>
-        <div class="highlight">
-          <div class="num">09</div>
-          <h3>One-command bring-up</h3>
-          <p><code>make setup &amp;&amp; make up</code> from a clean clone spins up Streamlit, MLflow, and Prefect via docker-compose with healthchecks.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ STACK ============ -->
-  <section id="stack">
-    <div class="container">
-      <div class="section-head reveal">
-        <div class="eyebrow">04 / Tech Stack</div>
-        <h2>Modern, 2026-current, no legacy.</h2>
-        <p>Every tool here is the current best-in-class for its layer. All free and open-source.</p>
-      </div>
-
-      <div class="stack reveal">
-        <div class="stack-item"><span class="layer">pkg</span><span class="name">uv</span></div>
-        <div class="stack-item"><span class="layer">lang</span><span class="name">Python 3.12</span></div>
-        <div class="stack-item"><span class="layer">df</span><span class="name">Polars</span></div>
-        <div class="stack-item"><span class="layer">store</span><span class="name">DuckDB</span></div>
-        <div class="stack-item"><span class="layer">fmt</span><span class="name">Parquet</span></div>
-        <div class="stack-item"><span class="layer">orch</span><span class="name">Prefect 3</span></div>
-        <div class="stack-item"><span class="layer">sql</span><span class="name">dbt-core</span></div>
-        <div class="stack-item"><span class="layer">ml</span><span class="name">hmmlearn</span></div>
-        <div class="stack-item"><span class="layer">ml</span><span class="name">LightGBM</span></div>
-        <div class="stack-item"><span class="layer">ml</span><span class="name">scikit-learn</span></div>
-        <div class="stack-item"><span class="layer">xai</span><span class="name">SHAP</span></div>
-        <div class="stack-item"><span class="layer">trk</span><span class="name">MLflow</span></div>
-        <div class="stack-item"><span class="layer">bt</span><span class="name">vectorbt</span></div>
-        <div class="stack-item"><span class="layer">app</span><span class="name">Streamlit</span></div>
-        <div class="stack-item"><span class="layer">viz</span><span class="name">Plotly</span></div>
-        <div class="stack-item"><span class="layer">cfg</span><span class="name">pydantic-settings</span></div>
-        <div class="stack-item"><span class="layer">log</span><span class="name">structlog</span></div>
-        <div class="stack-item"><span class="layer">cli</span><span class="name">Typer</span></div>
-        <div class="stack-item"><span class="layer">lint</span><span class="name">Ruff</span></div>
-        <div class="stack-item"><span class="layer">type</span><span class="name">mypy --strict</span></div>
-        <div class="stack-item"><span class="layer">test</span><span class="name">pytest</span></div>
-        <div class="stack-item"><span class="layer">infra</span><span class="name">Docker</span></div>
-        <div class="stack-item"><span class="layer">ci</span><span class="name">GitHub Actions</span></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ CODE SAMPLE ============ -->
-  <section>
-    <div class="container">
-      <div class="section-head reveal">
-        <div class="eyebrow">05 / Representative Snippet</div>
-        <h2>The look-ahead bias guard.</h2>
-        <p>An empirical test, not a comment. If anyone introduces a feature that uses future data, this fails loudly in CI.</p>
-      </div>
-
-      <div class="codeblock reveal">
-        <div class="codeblock-head">
-          <div class="path">tests/unit/test_look_ahead_bias.py</div>
-          <div class="file-tag">PYTHON</div>
-        </div>
-<pre><span class="kw">def</span> <span class="fn">test_no_feature_column_can_be_computed_from_future_data</span>(
-    synthetic_mart: pl.DataFrame,
-) -&gt; <span class="kw">None</span>:
-    <span class="com">"""Empirical sampler: perturb the *future* of the source mart and re-build
-    features. None of the lagged feature values for the chosen date may change."""</span>
-    target_date = date(<span class="num">2024</span>, <span class="num">1</span>, <span class="num">10</span>)
-    perturbed = synthetic_mart.with_columns(
-        pl.when(pl.col(<span class="str">"trade_date"</span>) &gt; target_date)
-        .then(pl.col(<span class="str">"adj_close"</span>) * <span class="num">1.5</span>)
-        .otherwise(pl.col(<span class="str">"adj_close"</span>))
-        .alias(<span class="str">"adj_close"</span>)
-    )
-
-    orig = <span class="fn">build_supervised_features</span>(synthetic_mart).filter(
-        pl.col(<span class="str">"trade_date"</span>) == target_date
-    )
-    new  = <span class="fn">build_supervised_features</span>(perturbed).filter(
-        pl.col(<span class="str">"trade_date"</span>) == target_date
-    )
-
-    <span class="kw">for</span> col <span class="kw">in</span> orig.columns:
-        <span class="kw">if</span> col <span class="kw">in</span> {<span class="str">"ticker"</span>, <span class="str">"trade_date"</span>}:
-            <span class="kw">continue</span>
-        <span class="kw">assert</span> orig[col].to_list() == new[col].to_list(), (
-            <span class="str">f"feature `</span>{col}<span class="str">` changed after future-only perturbation"</span>
-        )</pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ PHASES ============ -->
-  <section id="phases">
-    <div class="container">
-      <div class="section-head reveal">
-        <div class="eyebrow">06 / Build Log</div>
-        <h2>Seven phases, all shipped.</h2>
-        <p>The full executable spec lived in <code style="font-family:var(--font-mono);background:var(--surface);padding:2px 8px;border-radius:3px;color:var(--text);font-size:12.5px;border:1px solid var(--border-2);">01_handoff_regime_detection.md</code> &mdash; these are the acceptance criteria, each verified.</p>
-      </div>
-
-      <div class="phases reveal">
-        <div class="phase">
-          <div class="label">PHASE 01</div>
-          <div>
-            <div class="name">Scaffold and tooling</div>
-            <div class="desc">uv / Ruff / mypy --strict / pytest --cov-fail-under=80 / pre-commit / Docker / GitHub Actions CI</div>
-          </div>
-          <div class="status">Shipped</div>
-        </div>
-        <div class="phase">
-          <div class="label">PHASE 02</div>
-          <div>
-            <div class="name">Ingestion (yfinance + FRED)</div>
-            <div class="desc">Prefect 3 flows / Pydantic v2 contracts / Hive-partitioned Parquet / content-hashed idempotency / exponential-backoff retries</div>
-          </div>
-          <div class="status">Shipped</div>
-        </div>
-        <div class="phase">
-          <div class="label">PHASE 03</div>
-          <div>
-            <div class="name">Warehouse and dbt</div>
-            <div class="desc">DuckDB external views / staging-intermediate-marts / not_null/unique/range tests / freshness singular test</div>
-          </div>
-          <div class="status">Shipped</div>
-        </div>
-        <div class="phase">
-          <div class="label">PHASE 04</div>
-          <div>
-            <div class="name">Features and bias guard</div>
-            <div class="desc">Polars feature builders mirroring dbt / empirical look-ahead test / EDA notebook / 12 Plotly exports</div>
-          </div>
-          <div class="status">Shipped</div>
-        </div>
-        <div class="phase">
-          <div class="label">PHASE 05</div>
-          <div>
-            <div class="name">Regime models</div>
-            <div class="desc">Gaussian HMM (BIC-selected K) / LightGBM walk-forward CV / MLflow registry / regime-train CLI</div>
-          </div>
-          <div class="status">Shipped</div>
-        </div>
-        <div class="phase">
-          <div class="label">PHASE 06</div>
-          <div>
-            <div class="name">Backtest engine</div>
-            <div class="desc">vectorbt wrapper / cost model / three strategies / 1000-resample bootstrap Sharpe CIs / Pydantic BacktestResult</div>
-          </div>
-          <div class="status">Shipped</div>
-        </div>
-        <div class="phase">
-          <div class="label">PHASE 07</div>
-          <div>
-            <div class="name">Streamlit, monitoring, polish</div>
-            <div class="desc">Four-page dashboard / ntfy drift webhook / research memo / ADR-0001 on dual feature pipeline</div>
-          </div>
-          <div class="status">Shipped</div>
+          <strong>How to read this.</strong> The unconditional trend strategy underperforms buy-and-hold during this synthetic bull-dominant period &mdash; the expected behaviour of trend rules in long uptrends. But the regime overlay <em>cuts max drawdown from &minus;44% to &minus;28%</em> and more than doubles the Sharpe of the trend strategy. Smaller wounds during bear markets is the whole point.
         </div>
       </div>
     </div>
@@ -422,32 +183,9 @@
   <!-- ============ FOOTER ============ -->
   <footer>
     <div class="container">
-      <div class="footer-grid">
-        <div>
-          <h4>Adaptive Market Regime Detection</h4>
-          <p>A portfolio piece. Built end-to-end to demonstrate the full data-engineering, data-analytics, and data-science lifecycle on a real, non-stationary problem.</p>
-        </div>
-        <div>
-          <h4>Project</h4>
-          <ul>
-            <li><a href="#demo">Live demo</a></li>
-            <li><a href="#pipeline">Architecture</a></li>
-            <li><a href="#highlights">Highlights</a></li>
-            <li><a href="#phases">Build phases</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4>Links</h4>
-          <ul>
-            <li><a href="https://github.com/" target="_blank" rel="noopener">GitHub</a></li>
-            <li><a href="DEPLOY.md">Deploy guide</a></li>
-            <li><a href="mailto:sachde.n@northeastern.edu">Email</a></li>
-          </ul>
-        </div>
-      </div>
       <div class="footer-bottom">
         <span>&copy; 2026 Nirmit Sachde &middot; MIT licensed</span>
-        <span>Polars &middot; DuckDB &middot; dbt &middot; MLflow &middot; vectorbt &middot; Streamlit</span>
+        <span><a href="mailto:sachde.n@northeastern.edu">sachde.n@northeastern.edu</a></span>
       </div>
     </div>
   </footer>
