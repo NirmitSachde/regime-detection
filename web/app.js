@@ -13,23 +13,24 @@
 
   // ---------- Color tokens (mirror styles.css :root) ----------
   const C = {
-    bg: "#07091a",
-    surface: "#131938",
-    border: "#1e264f",
-    text: "#e6e9f5",
-    muted: "#8892b8",
-    cyan: "#00d9ff",
-    coral: "#ff7a59",
-    mint: "#00ff9c",
-    amber: "#ffc857",
-    violet: "#b794ff",
-    red: "#ff4757",
-    grey: "#5b6488",
+    bg:        "#0a0a0a",
+    surface:   "#141414",
+    border:    "#232323",
+    border_2:  "#2e2e2e",
+    text:      "#ededed",
+    text_2:    "#d4d4d4",
+    muted:     "#8a8a8a",
+    dim:       "#5a5a5a",
+    accent:    "#d4a017",
+    positive:  "#4a9d6e",
+    negative:  "#c14040",
+    neutral:   "#a8a29e",
+    info:      "#5c8df7",
   };
   const REGIME_C = {
-    0: C.mint,   // bull
-    1: C.amber,  // neutral
-    2: C.red,    // bear
+    0: C.positive,  // bull
+    1: C.neutral,   // chop
+    2: C.negative,  // bear
   };
   const REGIME_LABEL = data.regime_labels;
 
@@ -54,31 +55,31 @@
     return Object.assign({
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor:  "rgba(0,0,0,0)",
-      font: { family: "Inter, system-ui", color: C.text, size: 12 },
-      margin: { l: 56, r: 24, t: 24, b: 40 },
+      font: { family: "Inter, system-ui", color: C.text_2, size: 11.5 },
+      margin: { l: 60, r: 28, t: 24, b: 44 },
       xaxis: {
         gridcolor: C.border,
         zerolinecolor: C.border,
-        linecolor: C.border,
-        tickfont: { color: C.muted, family: "JetBrains Mono, monospace", size: 11 },
+        linecolor: C.border_2,
+        tickfont: { color: C.muted, family: "JetBrains Mono, monospace", size: 10.5 },
       },
       yaxis: {
         gridcolor: C.border,
         zerolinecolor: C.border,
-        linecolor: C.border,
-        tickfont: { color: C.muted, family: "JetBrains Mono, monospace", size: 11 },
+        linecolor: C.border_2,
+        tickfont: { color: C.muted, family: "JetBrains Mono, monospace", size: 10.5 },
       },
       legend: {
         orientation: "h",
         yanchor: "bottom", y: 1.02,
         xanchor: "right", x: 1,
-        font: { color: C.muted, size: 11 },
+        font: { color: C.muted, size: 10.5, family: "JetBrains Mono, monospace" },
         bgcolor: "rgba(0,0,0,0)",
       },
       hoverlabel: {
         bgcolor: C.surface,
-        bordercolor: C.border,
-        font: { color: C.text, family: "JetBrains Mono, monospace", size: 12 },
+        bordercolor: C.border_2,
+        font: { color: C.text, family: "JetBrains Mono, monospace", size: 11.5 },
       },
       hovermode: "x unified",
       showlegend: true,
@@ -122,7 +123,7 @@
         type: "scatter",
         mode: "lines",
         name: "SPY (synthetic)",
-        line: { color: C.cyan, width: 2.4 },
+        line: { color: C.text, width: 1.8 },
         hovertemplate: "%{x|%b %Y} · $%{y:.2f}<extra></extra>",
       },
     ];
@@ -134,7 +135,7 @@
         type: "scatter",
         mode: "lines",
         name: "MA(50)",
-        line: { color: C.amber, width: 1.4, dash: "dot" },
+        line: { color: C.accent, width: 1.2, dash: "dot" },
         hovertemplate: "MA50 $%{y:.2f}<extra></extra>",
       });
       traces.push({
@@ -143,14 +144,14 @@
         type: "scatter",
         mode: "lines",
         name: "MA(200)",
-        line: { color: C.coral, width: 1.4, dash: "dot" },
+        line: { color: C.info, width: 1.2, dash: "dot" },
         hovertemplate: "MA200 $%{y:.2f}<extra></extra>",
       });
     }
 
     const layout = baseLayout({
       shapes: (overlay === "regime" || overlay === "both") ? regimeShapes() : [],
-      height: 380,
+      height: 400,
       yaxis: Object.assign({}, baseLayout().yaxis, {
         tickprefix: "$",
         tickformat: ",.0f",
@@ -168,7 +169,7 @@
         x: data.dates, y: data.baseline_eq,
         type: "scatter", mode: "lines",
         name: "trend (unconditional)",
-        line: { color: C.coral, width: 2 },
+        line: { color: C.negative, width: 1.6 },
         hovertemplate: "%{x|%b %Y} · $%{y:,.0f}<extra>trend</extra>",
       });
     }
@@ -177,9 +178,9 @@
         x: data.dates, y: data.regime_eq,
         type: "scatter", mode: "lines",
         name: "trend + regime overlay",
-        line: { color: C.mint, width: 2.6 },
+        line: { color: C.positive, width: 2 },
         fill: strat === "regime" ? "tozeroy" : undefined,
-        fillcolor: strat === "regime" ? "rgba(0,255,156,0.08)" : undefined,
+        fillcolor: strat === "regime" ? "rgba(74,157,110,0.06)" : undefined,
         hovertemplate: "%{x|%b %Y} · $%{y:,.0f}<extra>regime</extra>",
       });
     }
@@ -188,13 +189,13 @@
         x: data.dates, y: data.buy_hold_eq,
         type: "scatter", mode: "lines",
         name: "buy &amp; hold",
-        line: { color: C.muted, width: 1.5, dash: "dash" },
+        line: { color: C.muted, width: 1.2, dash: "dash" },
         hovertemplate: "%{x|%b %Y} · $%{y:,.0f}<extra>B&amp;H</extra>",
       });
     }
 
     const layout = baseLayout({
-      height: 380,
+      height: 400,
       yaxis: Object.assign({}, baseLayout().yaxis, {
         tickprefix: "$",
         tickformat: ",.0f",
