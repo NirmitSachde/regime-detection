@@ -203,6 +203,10 @@ omit = [
   # Top-level CLI dispatcher
   "src/regime/cli.py",
   "src/regime/warehouse.py",
+  # Live API data path — only exercises when warehouse + labels.parquet
+  # exist on the server. Covered by integration tests against the
+  # populated warehouse, not by unit tests.
+  "src/regime/api/live.py",
 ]
 
 [tool.coverage.report]
