@@ -22,6 +22,16 @@ RUN pip install --no-cache-dir \
 COPY src/regime ./regime
 ENV PYTHONPATH=/app
 
+# Bake the warehouse + trained models into the image when they exist locally.
+# COPY needs at least one matching file, so we require data/.gitkeep — when
+# nothing else is in data/, that's the only thing that ships and the API
+# falls back to its baked-in synthetic sample (data_source: "synthetic" on
+# every response). Run `make ingest && make dbt-build && make train`
+# locally before `make api-image` to ship a populated warehouse instead.
+COPY data /app/data
+ENV DATA_DIR=/app/data
+ENV DUCKDB_PATH=/app/data/warehouse.duckdb
+
 # Render injects $PORT — default to 8000 locally
 ENV PORT=8000
 EXPOSE 8000

@@ -134,3 +134,90 @@ The static site loads sample data baked into `web/sample_data.js`, so it works
 without the API running. Once you set `API_BASE` in `config.js` and the API is
 reachable, you can wire the demo charts to call live endpoints (see
 `app.js` &mdash; left as a small follow-up).
+
+---
+
+## Switching from synthetic to real data
+
+By default, the API on Render ships with **no warehouse**, so it serves baked-in
+synthetic sample data and every response carries `data_source: "synthetic"`.
+The dashboard is upfront about this in its status banners.
+
+To switch to real ingested data, you need to:
+
+1. **Get a free FRED API key** &mdash;
+   <https://fredaccount.stlouisfed.org/apikeys> &rarr; sign up (email only) &rarr; copy the key.
+
+2. **Add the key to `.env`** at the repo root:
+   ```bash
+   echo "FRED_API_KEY=your_key_here" > .env
+   ```
+
+3. **Run the full pipeline locally**:
+   ```bash
+   make real-data
+   ```
+   That runs `ingest` (yfinance + FRED) &rarr; `dbt-build` &rarr; `train` &rarr; `backtest`.
+   Takes ~5&ndash;10 minutes the first time. Produces `data/warehouse.duckdb`,
+   `data/models/hmm/labels.parquet`, and `data/backtests/summary_latest.json`.
+
+4. **Bake the warehouse into a Docker image**:
+   ```bash
+   make api-image
+   ```
+   The `Dockerfile.api` `COPY`s everything under `data/` into `/app/data` so
+   the API's `_current_data_source()` check finds the warehouse + labels and
+   starts serving real data.
+
+5. **Verify locally**:
+   ```bash
+   make api-image-run
+   # → response includes "data_source": "warehouse"
+   ```
+
+### Getting the image onto Render
+
+The warehouse is **gitignored** (it's large and regenerable), so a fresh
+`git push` doesn't carry it. Render won't have the file when it builds. Two
+options:
+
+**Option A &mdash; GitHub Container Registry** (cleanest, free for public repos):
+
+```bash
+# Build + tag for ghcr.io
+docker build -f Dockerfile.api -t ghcr.io/nirmitsachde/regime-detection-api:latest .
+
+# Authenticate (only once; uses a Personal Access Token with write:packages)
+echo "$GHCR_TOKEN" | docker login ghcr.io -u nirmitsachde --password-stdin
+
+# Push
+docker push ghcr.io/nirmitsachde/regime-detection-api:latest
+```
+
+Then change `render.yaml` from `runtime: docker` + `dockerfilePath` to
+`runtime: image` + `image.url: ghcr.io/nirmitsachde/regime-detection-api:latest`.
+Render pulls the pre-baked image instead of building from source.
+
+**Option B &mdash; commit a release artifact** (simpler, less elegant):
+
+1. After `make real-data`, upload `data/warehouse.duckdb` and
+   `data/models/hmm/labels.parquet` to a GitHub release.
+2. Add a `RUN curl -fL <release-url> -o /app/data/warehouse.duckdb` step
+   in `Dockerfile.api` after the `COPY src/regime`.
+3. Re-push; Render rebuilds and downloads the warehouse during build.
+
+### Keeping it fresh
+
+A warehouse baked into an image is **static**: it's the state of the world at
+build time. To keep it fresh, you need to rebuild and redeploy. Three patterns:
+
+- **Manual** &mdash; run `make real-data && make api-image && docker push ...` whenever you want fresh data.
+- **GitHub Actions cron** &mdash; a scheduled workflow runs the pipeline (needs
+  `FRED_API_KEY` as a repo secret), pushes the image to ghcr.io, Render auto-deploys.
+- **Render persistent disk** (paid) &mdash; let the pipeline run *inside* Render
+  on a schedule, write the warehouse to a mounted disk shared between the
+  cron service and the web service.
+
+For a portfolio piece, the synthetic-data demo + honest data_source labelling
+is genuinely fine. Switch to real data if you want concrete numbers a reader
+can cross-check against the public record.

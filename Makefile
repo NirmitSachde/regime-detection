@@ -74,6 +74,37 @@ docs:  ## Build code reference with pdoc into ./docs-site/
 docs-serve: docs  ## Build and serve docs locally
 	python3 -m http.server --directory docs-site 8088
 
+# ---------------------------------------------------------------------
+# Real-data pipeline → bake into Docker image → push to Render
+# ---------------------------------------------------------------------
+
+real-data: ingest dbt-build train backtest  ## End-to-end: ingest + warehouse + train + backtest
+	@echo
+	@echo "Pipeline complete. Verify what landed:"
+	@ls -lh data/warehouse.duckdb 2>/dev/null && \
+	  ls -lh data/models/hmm/labels.parquet 2>/dev/null && \
+	  echo "Ready to bake — run: make api-image"
+
+api-image:  ## Build Dockerfile.api locally with whatever's currently in data/
+	docker build -f Dockerfile.api -t regime-detection-api:latest .
+	@echo "Image built. Test locally with:"
+	@echo "  docker run --rm -p 8000:8000 regime-detection-api:latest"
+	@echo "  curl http://localhost:8000/regime/latest | jq .data_source"
+
+api-image-run:  ## Build + run the image, then exit
+	docker build -f Dockerfile.api -t regime-detection-api:latest .
+	docker run --rm -d -p 8000:8000 --name regime-api-test regime-detection-api:latest
+	@sleep 3 && curl -fsS http://localhost:8000/regime/latest | python3 -m json.tool | head -20
+	@docker stop regime-api-test
+
+ship-real-data: real-data  ## After real-data: push to GitHub so Render rebuilds with the warehouse
+	@echo
+	@echo "Pushing populated warehouse-aware Dockerfile to GitHub..."
+	@echo "Render will pull, rebuild, and serve real data."
+	@echo "Note: the warehouse itself is gitignored — Render will rebuild WITHOUT"
+	@echo "it unless you switch to a deployment strategy that includes data/"
+	@echo "(see DEPLOY.md 'Shipping real data' section)."
+
 clean:  ## Remove caches, build artifacts (keeps data/)
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov build dist *.egg-info
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
