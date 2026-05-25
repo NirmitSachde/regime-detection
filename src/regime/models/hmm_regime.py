@@ -36,7 +36,7 @@ def _bic(model: GaussianHMM, x: np.ndarray) -> float:
         + model.n_components * n_features  # diag covs
     )
     ll = float(model.score(x))
-    return -2.0 * ll + n_params * np.log(n_obs)
+    return float(-2.0 * ll + n_params * np.log(n_obs))
 
 
 def fit_hmm(

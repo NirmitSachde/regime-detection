@@ -130,8 +130,10 @@ strict = true
 warn_unused_configs = true
 namespace_packages = true
 explicit_package_bases = true
-files = ["src"]
+mypy_path = "src"
+files = ["src/regime"]
 exclude = ["^(notebooks|dbt|data|tests)/"]
+disable_error_code = ["import-untyped"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -144,6 +146,17 @@ module = [
   "shap.*",
   "duckdb.*",
   "plotly.*",
+  "polars.*",
+  "sklearn.*",
+  "prefect.*",
+  "streamlit.*",
+  "structlog.*",
+  "tenacity.*",
+  "typer.*",
+  "rich.*",
+  "fastapi.*",
+  "uvicorn.*",
+  "pyarrow.*",
 ]
 ignore_missing_imports = true
 

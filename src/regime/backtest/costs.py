@@ -67,4 +67,4 @@ def apply_costs_to_returns(
         else -np.abs(positions) * borrow_daily
     )
 
-    return strategy_returns - slip - borrow
+    return np.asarray(strategy_returns - slip - borrow)

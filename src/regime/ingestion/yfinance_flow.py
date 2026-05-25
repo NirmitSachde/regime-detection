@@ -65,7 +65,7 @@ def _download_batch(tickers: list[str], start: str, end: str) -> pl.DataFrame:
 
 def _norm_row(ticker: str, r: dict[str, Any]) -> dict[str, Any]:
     d = r.get("Date") or r.get("Datetime") or r.get("index")
-    if hasattr(d, "date"):
+    if d is not None and hasattr(d, "date"):
         d = d.date()
     return {
         "ticker": ticker.upper(),

@@ -132,4 +132,4 @@ def predict_proba(fit: LGBMFitResult, df: pl.DataFrame) -> np.ndarray:
 def classification_report_text(fit: LGBMFitResult, df: pl.DataFrame, label_col: str) -> str:
     x, y = _to_xy(df, list(fit.feature_columns), label_col)
     pred = np.asarray(fit.booster.predict(x)).argmax(axis=1)
-    return classification_report(y, pred, zero_division=0)
+    return str(classification_report(y, pred, zero_division=0))

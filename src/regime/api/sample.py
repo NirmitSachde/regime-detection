@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 from datetime import date, timedelta
+from typing import Any
 
 # Deterministic synthetic regime walk — same seed/params as web/sample_data.js
 _RNG_SEED = 7
@@ -77,7 +78,7 @@ REGIME_LABELS = {
 }
 
 
-def regime_for_date(d: date) -> dict[str, object] | None:
+def regime_for_date(d: date) -> dict[str, Any] | None:
     """Return regime classification + state probabilities for a date.
 
     Probabilities are simulated as a soft-max around the chosen state with
@@ -116,12 +117,12 @@ def regime_for_date(d: date) -> dict[str, object] | None:
     }
 
 
-def latest_regime() -> dict[str, object]:
+def latest_regime() -> dict[str, Any]:
     return regime_for_date(_DATES[-1])  # type: ignore[return-value]
 
 
-def regime_history(start: date | None, end: date | None, limit: int) -> list[dict[str, object]]:
-    out: list[dict[str, object]] = []
+def regime_history(start: date | None, end: date | None, limit: int) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
     for d in _DATES:
         if start and d < start:
             continue
@@ -135,7 +136,7 @@ def regime_history(start: date | None, end: date | None, limit: int) -> list[dic
     return out
 
 
-def backtest_summary() -> dict[str, object]:
+def backtest_summary() -> dict[str, Any]:
     """Same numbers shown on the landing page."""
     return {
         "as_of": _DATES[-1].isoformat(),
@@ -176,7 +177,7 @@ def backtest_summary() -> dict[str, object]:
     }
 
 
-def regime_distribution() -> dict[str, object]:
+def regime_distribution() -> dict[str, Any]:
     counts = {0: 0, 1: 0, 2: 0}
     for r in _REGIMES:
         counts[r] += 1

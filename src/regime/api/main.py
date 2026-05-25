@@ -130,7 +130,7 @@ def health() -> HealthResponse:
 def regime_latest() -> RegimeClassification:
     """Most recent regime classification with probability vector."""
     data = sample.latest_regime()
-    return RegimeClassification(**data)  # type: ignore[arg-type]
+    return RegimeClassification(**data)
 
 
 # NOTE: static-path routes (/regime/history, /regime/distribution,
@@ -149,7 +149,7 @@ def regime_history(
     items = sample.regime_history(start, end, limit)
     return RegimeHistory(
         n=len(items),
-        items=[RegimeClassification(**r) for r in items],  # type: ignore[arg-type]
+        items=[RegimeClassification(**r) for r in items],
     )
 
 
@@ -160,7 +160,7 @@ def regime_distribution() -> RegimeDistribution:
     return RegimeDistribution(
         as_of=data["as_of"],
         total_days=data["total_days"],
-        states=[RegimeStateCount(**s) for s in data["states"]],  # type: ignore[arg-type]
+        states=[RegimeStateCount(**s) for s in data["states"]],
     )
 
 
@@ -173,7 +173,7 @@ def regime_for_day(day: date) -> RegimeClassification:
             status_code=404,
             detail=f"No regime classification available for {day.isoformat()}",
         )
-    return RegimeClassification(**data)  # type: ignore[arg-type]
+    return RegimeClassification(**data)
 
 
 @app.get(

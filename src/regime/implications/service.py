@@ -16,13 +16,14 @@ from typing import TYPE_CHECKING
 
 from regime.config import get_settings
 from regime.implications import stats as stats_mod
+from regime.implications.models import (
+    AlternativeScenario,
+    HistoricalRegimeStats,
+    RegimeImplications,
+)
 
 if TYPE_CHECKING:
     import polars as pl
-from regime.implications.models import (
-    AlternativeScenario,
-    RegimeImplications,
-)
 from regime.implications.policy import (
     ALLOCATION_BY_REGIME,
     REGIME_DESCRIPTIONS,
@@ -40,7 +41,7 @@ def _build_response(
     regime: int,
     probabilities: dict[int, float],
     days_in_run: int | None,
-    historical: stats_mod.HistoricalRegimeStats,
+    historical: HistoricalRegimeStats,
     data_source: str,
 ) -> RegimeImplications:
     confidence = float(probabilities.get(regime, max(probabilities.values(), default=1.0)))
@@ -176,9 +177,9 @@ def _from_synthetic() -> RegimeImplications:
     from regime.api import sample as _sample
 
     latest = _sample.latest_regime()
-    regime = int(latest["regime"])  # type: ignore[arg-type]
-    as_of = _date.fromisoformat(latest["date"])  # type: ignore[arg-type]
-    probs = {int(k): float(v) for k, v in latest["probabilities"].items()}  # type: ignore[union-attr]
+    regime = int(latest["regime"])
+    as_of = _date.fromisoformat(latest["date"])
+    probs = {int(k): float(v) for k, v in latest["probabilities"].items()}
     hist = stats_mod.synthetic_stats(regime)
     days_in_run = _synthetic_days_in_run(regime)
     return _build_response(
@@ -197,8 +198,8 @@ def _synthetic_for_date(target: _date) -> RegimeImplications | None:
     rec = _sample.regime_for_date(target)
     if rec is None:
         return None
-    regime = int(rec["regime"])  # type: ignore[arg-type]
-    probs = {int(k): float(v) for k, v in rec["probabilities"].items()}  # type: ignore[union-attr]
+    regime = int(rec["regime"])
+    probs = {int(k): float(v) for k, v in rec["probabilities"].items()}
     hist = stats_mod.synthetic_stats(regime)
     return _build_response(
         as_of=target,
