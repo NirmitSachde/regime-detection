@@ -29,6 +29,59 @@ def _labels_path() -> Path:
     return get_settings().data_dir / "models" / "hmm" / "labels.parquet"
 
 
+def _proba_path() -> Path:
+    return get_settings().data_dir / "models" / "hmm" / "proba.parquet"
+
+
+def _load_proba_lookup() -> "dict[_date, dict[str, float]] | None":
+    """Load real HMM predict_proba output keyed by date.
+
+    Returns None if proba.parquet doesn't exist (e.g. trained with an older
+    version of train.py that only saved labels). Caller should fall back to
+    the synthetic _build_probs proxy in that case.
+
+    HMM states beyond 2 (K=4 BIC selection) collapse into state 2 (bear) for
+    the canonical 3-state wire format. Probability mass is summed accordingly.
+    """
+    p = _proba_path()
+    if not p.exists():
+        return None
+    import polars as pl
+
+    df = pl.read_parquet(p)
+    out: dict[_date, dict[str, float]] = {}
+    cols = [c for c in df.columns if c.startswith("p")]
+    for row in df.iter_rows(named=True):
+        d = row["feature_date"]
+        # Sum p3..pN into p2 (collapse tail states into bear)
+        p0 = float(row.get("p0", 0.0))
+        p1 = float(row.get("p1", 0.0))
+        p2 = sum(float(row.get(c, 0.0)) for c in cols if c not in ("p0", "p1"))
+        total = p0 + p1 + p2 or 1.0
+        out[d] = {
+            "0": round(p0 / total, 4),
+            "1": round(p1 / total, 4),
+            "2": round(p2 / total, 4),
+        }
+    return out
+
+
+# Lazily computed on first use, cached for the process lifetime
+_PROBA_CACHE: "dict[_date, dict[str, float]] | None" = None
+_PROBA_LOADED = False
+
+
+def _proba_for(d: _date, fallback_regime: int) -> dict[str, float]:
+    """Real HMM proba if available, otherwise the smoothed-argmax fallback."""
+    global _PROBA_CACHE, _PROBA_LOADED  # noqa: PLW0603
+    if not _PROBA_LOADED:
+        _PROBA_CACHE = _load_proba_lookup()
+        _PROBA_LOADED = True
+    if _PROBA_CACHE and d in _PROBA_CACHE:
+        return _PROBA_CACHE[d]
+    return _build_probs(fallback_regime)
+
+
 def _spy_price_at(con: Any, target: _date) -> float | None:
     """Last SPY adj_close on or before `target`."""
     row = con.execute(
@@ -89,7 +142,7 @@ def latest_regime() -> dict[str, Any]:
         "date": target.isoformat(),
         "regime": min(regime, 2),  # canonical 3 states externally
         "regime_label": _label_for(regime),
-        "probabilities": _build_probs(regime),
+        "probabilities": _proba_for(target, regime),
         "price": round(price, 2) if price else 0.0,
     }
 
@@ -114,7 +167,7 @@ def regime_for_date(d: _date) -> dict[str, Any] | None:
         "date": d.isoformat(),
         "regime": min(regime, 2),
         "regime_label": _label_for(regime),
-        "probabilities": _build_probs(regime),
+        "probabilities": _proba_for(d, regime),
         "price": round(price, 2) if price else 0.0,
     }
 
@@ -156,7 +209,7 @@ def regime_history(start: _date | None, end: _date | None, limit: int) -> list[d
                 "date": d.isoformat(),
                 "regime": min(regime, 2),
                 "regime_label": _label_for(regime),
-                "probabilities": _build_probs(regime),
+                "probabilities": _proba_for(d, regime),
                 "price": round(px_map.get(d, 0.0), 2),
             }
         )

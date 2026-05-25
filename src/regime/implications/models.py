@@ -82,5 +82,5 @@ class RegimeImplications(BaseModel):
     caveats: list[str] = Field(default_factory=list)
 
     data_source: str = Field(
-        description="'live' if read from the warehouse, 'synthetic' if served from sample data"
+        description="'warehouse' if read from a populated DuckDB, 'synthetic' if served from sample data"
     )

@@ -184,7 +184,7 @@ def test_get_latest_returns_full_payload() -> None:
     assert imp.confidence_label in {"High", "Medium", "Low"}
     assert 0.0 <= imp.confidence <= 1.0
     assert len(imp.allocation) == 5
-    assert imp.data_source in {"live", "synthetic"}
+    assert imp.data_source in {"warehouse", "synthetic"}
     assert imp.headline
     assert imp.caveats
 

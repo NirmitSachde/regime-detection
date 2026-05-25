@@ -87,6 +87,19 @@ def hmm() -> HMMFitResult:
         labels.write_parquet(out_dir / "labels.parquet")
         _save_pickle(fit, out_dir / "fit.pkl")
 
+        # Also persist the full predict_proba matrix so the API can surface
+        # the actual HMM posterior instead of a smoothed-argmax reconstruction.
+        from regime.models.hmm_regime import predict_state_proba
+
+        proba = predict_state_proba(fit, feats)
+        proba_df = pl.DataFrame(
+            {
+                "feature_date": feats["feature_date"],
+                **{f"p{i}": proba[:, i].tolist() for i in range(fit.n_states)},
+            }
+        )
+        proba_df.write_parquet(out_dir / "proba.parquet")
+
         mlflow.log_artifact(str(out_dir / "fit.pkl"))
         register_model(str(out_dir), name="regime-hmm")
     return fit

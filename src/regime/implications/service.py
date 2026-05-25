@@ -136,9 +136,11 @@ def get_implications_for_date(target: _date) -> RegimeImplications | None:
         return None
 
     regime = int(row["regime_state"][0])
-    # Probability vector from labels alone is unobservable post-hoc; reconstruct a
-    # one-hot with mild smoothing so confidence is still meaningful.
-    probs = _reconstruct_probs(regime)
+    # Prefer real HMM proba; fall back to smoothed-argmax reconstruction.
+    from regime.api.live import _proba_for
+
+    probs_str = _proba_for(target, regime)
+    probs = {int(k): float(v) for k, v in probs_str.items()}
     days_in_run = _days_in_run_to(labels, target)
     hist = stats_mod.historical_stats_for_regime(labels, returns, regime)
     return _build_response(
@@ -147,7 +149,7 @@ def get_implications_for_date(target: _date) -> RegimeImplications | None:
         probabilities=probs,
         days_in_run=days_in_run,
         historical=hist,
-        data_source="live",
+        data_source="warehouse",
     )
 
 
@@ -159,7 +161,13 @@ def _from_live(labels: pl.DataFrame, returns: pl.DataFrame) -> RegimeImplication
     latest_row = sorted_lbls.tail(1).to_dicts()[0]
     regime = int(latest_row["regime_state"])
     as_of = latest_row["feature_date"]
-    probs = _reconstruct_probs(regime)
+    # Prefer the real HMM proba (stored alongside labels) over the
+    # smoothed-argmax reconstruction. Falls back to reconstruction if the
+    # proba file isn't present (older training runs only wrote labels).
+    from regime.api.live import _proba_for
+
+    probs_str = _proba_for(as_of, regime)
+    probs = {int(k): float(v) for k, v in probs_str.items()}
     days_in_run = stats_mod.days_in_current_run(sorted_lbls)
     hist = stats_mod.historical_stats_for_regime(sorted_lbls, returns, regime)
     return _build_response(
@@ -168,7 +176,7 @@ def _from_live(labels: pl.DataFrame, returns: pl.DataFrame) -> RegimeImplication
         probabilities=probs,
         days_in_run=days_in_run,
         historical=hist,
-        data_source="live",
+        data_source="warehouse",
     )
 
 
