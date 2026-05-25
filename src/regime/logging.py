@@ -15,7 +15,7 @@ _CONFIGURED = False
 
 
 def configure_logging() -> None:
-    global _CONFIGURED
+    global _CONFIGURED  # noqa: PLW0603 - idempotent logger bootstrap
     if _CONFIGURED:
         return
 

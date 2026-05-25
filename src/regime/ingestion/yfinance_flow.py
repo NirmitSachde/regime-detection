@@ -119,9 +119,9 @@ def write_prices(df: pl.DataFrame) -> tuple[int, int]:
     for (ticker, year, month), group in df.group_by(["ticker", "_year", "_month"]):
         out = prices_partition_path(
             settings.prices_dir,
-            cast(str, ticker),
-            cast(int, year),
-            cast(int, month),
+            cast("str", ticker),
+            cast("int", year),
+            cast("int", month),
         )
         part = group.drop(["_year", "_month"])
         wrote, nbytes = write_partition_idempotent(part, out, sort_by=["date"])

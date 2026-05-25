@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import date
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -17,7 +16,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from regime.backtest.costs import TRADING_DAYS_PER_YEAR, CostConfig, apply_costs_to_returns
 from regime.backtest.strategies import (
-    StrategySignal,
     baseline_trend,
     regime_conditioned_meanrev,
     regime_conditioned_trend,
@@ -60,9 +58,7 @@ class BacktestResult(BaseModel):
 
 
 def _to_returns(prices: pl.DataFrame) -> pl.Series:
-    return (
-        prices.sort("trade_date")["adj_close"].log().diff()
-    ).fill_null(0.0)
+    return (prices.sort("trade_date")["adj_close"].log().diff()).fill_null(0.0)
 
 
 def _bootstrap_sharpe_ci(
@@ -82,10 +78,20 @@ def _bootstrap_sharpe_ci(
 
 def _stats(returns: np.ndarray, positions: np.ndarray) -> dict[str, float]:
     if returns.size == 0:
-        return {k: 0.0 for k in (
-            "sharpe", "sortino", "cagr", "max_drawdown", "calmar",
-            "hit_rate", "exposure", "turnover", "n_trades",
-        )}
+        return dict.fromkeys(
+            (
+                "sharpe",
+                "sortino",
+                "cagr",
+                "max_drawdown",
+                "calmar",
+                "hit_rate",
+                "exposure",
+                "turnover",
+                "n_trades",
+            ),
+            0.0,
+        )
 
     mu = returns.mean()
     sd = returns.std()
@@ -246,7 +252,6 @@ def run_all_backtests(ticker: str = "SPY") -> list[BacktestResult]:
         )
 
     # Persist a combined summary table for the Streamlit page
-    out = pd.DataFrame([r.summary.model_dump(mode="json") for r in results])
     out_path = settings.data_dir / "backtests" / "summary_latest.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps([r.summary.model_dump(mode="json") for r in results], indent=2))

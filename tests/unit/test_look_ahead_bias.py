@@ -66,9 +66,9 @@ def test_lagged_macro_uses_only_prior_values(synthetic_macro: pl.DataFrame) -> N
     # Pick day t = 2024-01-15
     t = date(2024, 1, 15)
     row_t = lagged.filter(pl.col("feature_date") == t).to_dicts()[0]
-    src_prev = synthetic_macro.filter(
-        pl.col("feature_date") == (t - timedelta(days=1))
-    ).to_dicts()[0]
+    src_prev = synthetic_macro.filter(pl.col("feature_date") == (t - timedelta(days=1))).to_dicts()[
+        0
+    ]
     assert row_t["vix"] == src_prev["vix"]
     assert row_t["yc_10y2y"] == src_prev["yc_10y2y"]
 
@@ -121,9 +121,7 @@ def test_no_feature_column_can_be_computed_from_future_data(
         .alias("adj_close")
     )
 
-    orig = build_supervised_features(synthetic_mart).filter(
-        pl.col("trade_date") == target_date
-    )
+    orig = build_supervised_features(synthetic_mart).filter(pl.col("trade_date") == target_date)
     new = build_supervised_features(perturbed).filter(pl.col("trade_date") == target_date)
 
     # Compare every non-target feature column

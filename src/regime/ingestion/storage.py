@@ -67,11 +67,7 @@ def write_partition_idempotent(
 
 def prices_partition_path(root: Path, ticker: str, year: int, month: int) -> Path:
     return (
-        root
-        / f"ticker={ticker.upper()}"
-        / f"year={year}"
-        / f"month={month:02d}"
-        / "part.parquet"
+        root / f"ticker={ticker.upper()}" / f"year={year}" / f"month={month:02d}" / "part.parquet"
     )
 
 

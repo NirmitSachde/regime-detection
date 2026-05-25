@@ -101,20 +101,14 @@ def lgbm() -> LGBMFitResult:
 
     labels_path = settings.data_dir / "models" / "hmm" / "labels.parquet"
     if not labels_path.exists():
-        raise typer.BadParameter(
-            "Run `regime-train hmm` first to produce regime labels."
-        )
+        raise typer.BadParameter("Run `regime-train hmm` first to produce regime labels.")
     labels = pl.read_parquet(labels_path)
 
     joined = join_labels_onto_features(feats, labels).drop_nulls(subset=["regime_state"])
 
     # Pick numeric, non-key columns as features
     key_cols = {"ticker", "trade_date", "regime_state"}
-    feat_cols = [
-        c
-        for c in joined.columns
-        if c not in key_cols and joined[c].dtype.is_numeric()
-    ]
+    feat_cols = [c for c in joined.columns if c not in key_cols and joined[c].dtype.is_numeric()]
 
     with start_run("lgbm-fit", tags={"phase": "5"}):
         fit = walk_forward_train(joined, feat_cols, label_col="regime_state", n_splits=5)

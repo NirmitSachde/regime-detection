@@ -42,9 +42,7 @@ class Settings(BaseSettings):
     random_seed: int = Field(default=42)
 
     # Universe + history
-    universe: str = Field(
-        default="SPY,QQQ,IWM,DIA,XLK,XLF,XLE,XLY,XLP,XLV,XLI,XLU,XLB,XLRE,XLC"
-    )
+    universe: str = Field(default="SPY,QQQ,IWM,DIA,XLK,XLF,XLE,XLY,XLP,XLV,XLI,XLU,XLB,XLRE,XLC")
     history_start: str = Field(default="2010-01-01")
 
     @field_validator("data_dir", "raw_dir", mode="after")

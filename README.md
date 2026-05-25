@@ -4,11 +4,15 @@ End-to-end pipeline that classifies the current market regime each day and
 routes systematic trading strategies through regime-aware risk rules.
 Fully reproducible from a clean clone, runs locally, **free data only**.
 
-[![CI](https://img.shields.io/badge/CI-pending-lightgrey)](.github/workflows/ci.yml)
+**Live dashboard:** <https://nirmitsachde.github.io/regime-detection/>
+
+[![CI](https://github.com/NirmitSachde/regime-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/NirmitSachde/regime-detection/actions/workflows/ci.yml)
+[![Pages](https://github.com/NirmitSachde/regime-detection/actions/workflows/pages.yml/badge.svg)](https://github.com/NirmitSachde/regime-detection/actions/workflows/pages.yml)
 [![python](https://img.shields.io/badge/python-3.12-blue)](pyproject.toml)
 [![ruff](https://img.shields.io/badge/lint-ruff-orange)](pyproject.toml)
 [![mypy](https://img.shields.io/badge/types-mypy_strict-blue)](pyproject.toml)
-[![coverage](https://img.shields.io/badge/coverage-≥80%25-brightgreen)](pyproject.toml)
+[![tests](https://img.shields.io/badge/tests-79%20passing-brightgreen)](tests/)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/NirmitSachde/regime-detection)
 
 ## Stack
 

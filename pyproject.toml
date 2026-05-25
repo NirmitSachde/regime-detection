@@ -103,13 +103,21 @@ select = [
 ]
 ignore = [
   "PLR0913",     # too many args
+  "PLR0911",     # too many return statements (dispatcher patterns)
   "PLR2004",     # magic value
   "E501",        # line length (formatter handles)
+  "PLC0415",     # import not at top-level (we use lazy imports deliberately)
+  "TC002",       # third-party import in type-checking block
+  "TC003",       # stdlib import in type-checking block
+  "TC006",       # cast string literal
+  "UP037",       # string annotations — noisy when mixed with forward refs
+  "RUF001",     # ambiguous unicode chars (× is intentional in stats labels)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["PLR2004", "S101"]
+"tests/**" = ["PLR2004", "S101", "PLC0415"]
 "notebooks/**" = ["E402", "F401"]
+"scripts/**" = ["PLC0415"]
 
 [tool.ruff.format]
 quote-style = "double"

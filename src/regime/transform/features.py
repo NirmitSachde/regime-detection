@@ -49,22 +49,19 @@ def build_hmm_features(macro: pl.DataFrame) -> pl.DataFrame:
     """
     lagged = lagged_macro_features(macro, lag_days=1)
     feat_cols = [
-        c for c in ("vix", "vix_chg_5d", "dxy_chg_5d", "yc_10y2y", "yc_chg_21d", "hy_oas")
+        c
+        for c in ("vix", "vix_chg_5d", "dxy_chg_5d", "yc_10y2y", "yc_chg_21d", "hy_oas")
         if c in lagged.columns
     ]
     return lagged.select(["feature_date", *feat_cols]).drop_nulls()
 
 
-def build_supervised_features(
-    mart_features: pl.DataFrame, lag_days: int = 1
-) -> pl.DataFrame:
+def build_supervised_features(mart_features: pl.DataFrame, lag_days: int = 1) -> pl.DataFrame:
     """LightGBM input: lag every non-key column to avoid look-ahead."""
     keys = {"ticker", "trade_date"}
     feat_cols = [c for c in mart_features.columns if c not in keys]
     df = mart_features.sort(["ticker", "trade_date"])
-    return df.with_columns(
-        [pl.col(c).shift(lag_days).over("ticker").alias(c) for c in feat_cols]
-    )
+    return df.with_columns([pl.col(c).shift(lag_days).over("ticker").alias(c) for c in feat_cols])
 
 
 def add_forward_target(
@@ -79,7 +76,6 @@ def add_forward_target(
         raise ValueError("add_forward_target requires `adj_close`")
     return df.sort(["ticker", "trade_date"]).with_columns(
         (
-            pl.col("adj_close").shift(-horizon).over("ticker").log()
-            - pl.col("adj_close").log()
+            pl.col("adj_close").shift(-horizon).over("ticker").log() - pl.col("adj_close").log()
         ).alias(target_col)
     )

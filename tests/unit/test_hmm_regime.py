@@ -20,9 +20,7 @@ def two_regime_synthetic() -> pl.DataFrame:
     b = rng.normal(loc=[3.0, 3.0], scale=[0.5, 0.5], size=(n, 2))
     x = np.vstack([a, b])
     dates = [date(2024, 1, 1) + timedelta(days=i) for i in range(2 * n)]
-    return pl.DataFrame(
-        {"feature_date": dates, "f0": x[:, 0].tolist(), "f1": x[:, 1].tolist()}
-    )
+    return pl.DataFrame({"feature_date": dates, "f0": x[:, 0].tolist(), "f1": x[:, 1].tolist()})
 
 
 def test_fit_returns_valid_result(two_regime_synthetic: pl.DataFrame) -> None:

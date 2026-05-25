@@ -51,9 +51,10 @@ def test_baseline_trend_zero_before_warmup(trending_prices: pl.DataFrame) -> Non
 def test_regime_conditioned_trend_zeroes_in_bear_state(trending_prices: pl.DataFrame) -> None:
     # Make every date a "bear" regime (state 0 -> multiplier 0)
     states = pl.DataFrame(
-        {"feature_date": trending_prices["trade_date"], "regime_state": [0] * trending_prices.height}
+        {
+            "feature_date": trending_prices["trade_date"],
+            "regime_state": [0] * trending_prices.height,
+        }
     )
-    sig = regime_conditioned_trend(
-        trending_prices, states, regime_multipliers={0: 0.0, 1: 1.0}
-    )
+    sig = regime_conditioned_trend(trending_prices, states, regime_multipliers={0: 0.0, 1: 1.0})
     assert sig.target_position[-1] == 0.0

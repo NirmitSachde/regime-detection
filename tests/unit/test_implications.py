@@ -33,7 +33,6 @@ from regime.implications.stats import (
     synthetic_stats,
 )
 
-
 # ---------- Policy: completeness + sanity ----------
 
 

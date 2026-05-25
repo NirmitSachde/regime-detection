@@ -38,8 +38,8 @@ if implications.data_source == "synthetic":
 
 # ---------- Headline ----------
 risk_color = {
-    "Risk-On":  "#4a9d6e",
-    "Neutral":  "#a8a29e",
+    "Risk-On": "#4a9d6e",
+    "Neutral": "#a8a29e",
     "Risk-Off": "#c14040",
 }.get(implications.risk_profile, "#a8a29e")
 
@@ -99,9 +99,9 @@ st.caption(
 )
 
 tilt_color = {
-    "Overweight":  "#4a9d6e",
+    "Overweight": "#4a9d6e",
     "Underweight": "#c14040",
-    "Neutral":     "#a8a29e",
+    "Neutral": "#a8a29e",
 }
 
 cols = st.columns(len(implications.allocation))
@@ -201,7 +201,7 @@ with right:
             y=[labels_short.get(int(k), str(k)) for k, _ in items],
             orientation="h",
             marker={"color": [colors.get(int(k), "#8a8a8a") for k, _ in items]},
-            text=[f"{p*100:.0f}%" for _, p in items],
+            text=[f"{p * 100:.0f}%" for _, p in items],
             textposition="outside",
             hoverinfo="skip",
         )
@@ -212,8 +212,12 @@ with right:
         font={"color": "#ededed", "family": "Inter"},
         margin={"l": 50, "r": 50, "t": 10, "b": 30},
         height=200,
-        xaxis={"range": [0, 100], "showgrid": False, "ticksuffix": "%",
-               "tickfont": {"color": "#8a8a8a"}},
+        xaxis={
+            "range": [0, 100],
+            "showgrid": False,
+            "ticksuffix": "%",
+            "tickfont": {"color": "#8a8a8a"},
+        },
         yaxis={"showgrid": False, "tickfont": {"color": "#ededed", "size": 13}},
     )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
@@ -223,8 +227,8 @@ if implications.alternative:
     st.divider()
     alt = implications.alternative
     alt_color = {
-        "Risk-On":  "#4a9d6e",
-        "Neutral":  "#a8a29e",
+        "Risk-On": "#4a9d6e",
+        "Neutral": "#a8a29e",
         "Risk-Off": "#c14040",
     }.get(alt.risk_profile, "#a8a29e")
 
@@ -261,7 +265,4 @@ with st.expander("Caveats and assumptions", expanded=False):
     for c in implications.caveats:
         st.markdown(f"- {c}")
 
-st.caption(
-    f"Data source: **{implications.data_source}** · "
-    f"Generated for {implications.as_of}"
-)
+st.caption(f"Data source: **{implications.data_source}** · Generated for {implications.as_of}")

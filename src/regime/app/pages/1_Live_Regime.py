@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import plotly.express as px
 import polars as pl
 import streamlit as st

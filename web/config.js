@@ -8,6 +8,10 @@
  * No build step. Edit, refresh, deploy.
  */
 window.SITE_CONFIG = {
+  // Set this to your deployed FastAPI base URL once you click the "Deploy to Render"
+  // button in the README (e.g. "https://regime-detection-api.onrender.com").
+  // When empty, the dashboard pages render baked-in sample data with a banner.
   API_BASE:   "",
-  GITHUB_URL: "",
+
+  GITHUB_URL: "https://github.com/NirmitSachde/regime-detection",
 };

@@ -27,11 +27,11 @@ from regime.implications.service import (
 
 __all__ = [
     "ALLOCATION_BY_REGIME",
+    "REGIME_DESCRIPTIONS",
+    "RISK_PROFILE",
     "AllocationTilt",
     "AlternativeScenario",
     "HistoricalRegimeStats",
-    "REGIME_DESCRIPTIONS",
-    "RISK_PROFILE",
     "RegimeImplications",
     "get_implications_for_date",
     "get_latest_implications",

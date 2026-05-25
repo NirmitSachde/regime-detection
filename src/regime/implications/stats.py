@@ -47,11 +47,9 @@ def _max_drawdown(returns: list[float]) -> float:
     worst = 0.0
     for r in returns:
         equity *= 1.0 + r
-        if equity > peak:
-            peak = equity
+        peak = max(peak, equity)
         dd = (equity - peak) / peak
-        if dd < worst:
-            worst = dd
+        worst = min(worst, dd)
     return worst
 
 
@@ -69,7 +67,7 @@ def historical_stats_for_regime(
         regime:  the target regime label (0/1/2)
         proxy:   the ticker name to record on the response
     """
-    import polars as pl  # noqa: PLC0415 - lazy import so slim API container can skip polars
+    import polars as pl
 
     if labels.height == 0 or returns.height == 0:
         return _empty_stats(proxy)
@@ -105,10 +103,7 @@ def historical_stats_for_regime(
 
     rets = in_regime[ret_col].to_list()
     # If returns are logs, convert to simple for stats people read more easily
-    if ret_col == "log_ret_1d":
-        simple = [math.exp(r) - 1.0 for r in rets]
-    else:
-        simple = list(rets)
+    simple = [math.exp(r) - 1.0 for r in rets] if ret_col == "log_ret_1d" else list(rets)
 
     median_ret = statistics.median(simple)
     mean_ret = statistics.mean(simple)
@@ -137,7 +132,7 @@ def historical_stats_for_regime(
     )
 
 
-def days_in_current_run(labels: "pl.DataFrame") -> int | None:
+def days_in_current_run(labels: pl.DataFrame) -> int | None:
     """How many consecutive most-recent days share the latest regime."""
     if labels.height == 0:
         return None
@@ -159,13 +154,13 @@ def load_labels_and_returns(
     labels_path: Path,
     duckdb_path: Path,
     proxy: str = _DEFAULT_PROXY,
-) -> "tuple[pl.DataFrame, pl.DataFrame] | None":
+) -> tuple[pl.DataFrame, pl.DataFrame] | None:
     """Read HMM labels + per-ticker returns from disk. Returns None if missing."""
     if not labels_path.exists() or not duckdb_path.exists():
         return None
 
-    import duckdb  # noqa: PLC0415 - lazy
-    import polars as pl  # noqa: PLC0415 - lazy
+    import duckdb
+    import polars as pl
 
     labels = pl.read_parquet(labels_path)
 

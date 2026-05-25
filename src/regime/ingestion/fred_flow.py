@@ -19,16 +19,16 @@ log = get_logger(__name__)
 
 # Default macro panel — extend in handoff Phase 5 as research dictates.
 DEFAULT_SERIES: tuple[str, ...] = (
-    "DGS10",        # 10Y Treasury
-    "DGS2",         # 2Y Treasury
-    "T10Y2Y",       # 10Y - 2Y spread
-    "VIXCLS",       # VIX close
-    "DTWEXBGS",     # Trade-weighted dollar
-    "CPIAUCSL",     # CPI
-    "UNRATE",       # Unemployment
-    "FEDFUNDS",     # Fed funds rate
-    "BAMLH0A0HYM2", # HY OAS
-    "DCOILWTICO",   # WTI crude
+    "DGS10",  # 10Y Treasury
+    "DGS2",  # 2Y Treasury
+    "T10Y2Y",  # 10Y - 2Y spread
+    "VIXCLS",  # VIX close
+    "DTWEXBGS",  # Trade-weighted dollar
+    "CPIAUCSL",  # CPI
+    "UNRATE",  # Unemployment
+    "FEDFUNDS",  # Fed funds rate
+    "BAMLH0A0HYM2",  # HY OAS
+    "DCOILWTICO",  # WTI crude
 )
 
 
@@ -69,7 +69,7 @@ def write_macro(df: pl.DataFrame) -> tuple[int, int]:
     files = 0
     total_bytes = 0
     for (series_id, year), group in df.group_by(["series_id", "_year"]):
-        out = macro_partition_path(settings.macro_dir, cast(str, series_id), cast(int, year))
+        out = macro_partition_path(settings.macro_dir, cast("str", series_id), cast("int", year))
         part = group.drop(["_year"])
         wrote, nbytes = write_partition_idempotent(part, out, sort_by=["date"])
         if wrote:

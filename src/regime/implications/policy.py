@@ -107,8 +107,7 @@ ALLOCATION_BY_REGIME: dict[int, list[AllocationTilt]] = {
             magnitude="Light",
             bps=0,
             rationale=(
-                "No edge in either direction; preserve dry powder for the next "
-                "regime change."
+                "No edge in either direction; preserve dry powder for the next regime change."
             ),
         ),
         AllocationTilt(

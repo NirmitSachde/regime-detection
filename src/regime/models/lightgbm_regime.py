@@ -98,16 +98,18 @@ def walk_forward_train(
         seen = sorted(int(c) for c in np.unique(y[va]))
         log.info("lgbm.fold", fold=i, macro_f1=round(f1, 4), n_train=len(tr), n_val=len(va))
         folds.append(
-            FoldMetric(
-                fold=i, train_size=len(tr), val_size=len(va), macro_f1=f1, classes_seen=seen
-            )
+            FoldMetric(fold=i, train_size=len(tr), val_size=len(va), macro_f1=f1, classes_seen=seen)
         )
         last_booster = booster
 
     # Final model: refit on all data with the best iteration count seen
-    final_iter = max(
-        (b.best_iteration for b in [last_booster] if b and b.best_iteration), default=num_boost_round
-    ) or num_boost_round
+    final_iter = (
+        max(
+            (b.best_iteration for b in [last_booster] if b and b.best_iteration),
+            default=num_boost_round,
+        )
+        or num_boost_round
+    )
     dall = lgb.Dataset(x, label=y)
     final = lgb.train(params, dall, num_boost_round=final_iter)
 
@@ -127,9 +129,7 @@ def predict_proba(fit: LGBMFitResult, df: pl.DataFrame) -> np.ndarray:
     return np.asarray(fit.booster.predict(x), dtype=np.float64)
 
 
-def classification_report_text(
-    fit: LGBMFitResult, df: pl.DataFrame, label_col: str
-) -> str:
+def classification_report_text(fit: LGBMFitResult, df: pl.DataFrame, label_col: str) -> str:
     x, y = _to_xy(df, list(fit.feature_columns), label_col)
     pred = np.asarray(fit.booster.predict(x)).argmax(axis=1)
     return classification_report(y, pred, zero_division=0)

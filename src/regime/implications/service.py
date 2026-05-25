@@ -12,7 +12,6 @@ the response tells the caller which path was taken.
 from __future__ import annotations
 
 from datetime import date as _date
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from regime.config import get_settings
@@ -85,7 +84,10 @@ def _alt_headline(current: int, alternative: int) -> str:
     """Plain-English description of what flips if we move from current → alternative."""
     pairs = {
         (0, 1): "Reduce equity overweight to neutral, take vol carry off, raise small cash buffer.",
-        (0, 2): "Cut equity decisively, flip duration from underweight to overweight, add vol hedge.",
+        (
+            0,
+            2,
+        ): "Cut equity decisively, flip duration from underweight to overweight, add vol hedge.",
         (1, 0): "Lean equity overweight, sell the cash buffer, harvest the vol hedge.",
         (1, 2): "Cut equity and credit, extend duration, raise cash and vol-hedge sleeves.",
         (2, 0): "Add equity back aggressively, cut duration, sell the vol hedge.",
@@ -126,7 +128,7 @@ def get_implications_for_date(target: _date) -> RegimeImplications | None:
     if labels.height == 0:
         return _synthetic_for_date(target)
 
-    import polars as pl  # noqa: PLC0415 - lazy import; live path only
+    import polars as pl
 
     row = labels.filter(pl.col("feature_date") == target)
     if row.height == 0:
@@ -151,7 +153,7 @@ def get_implications_for_date(target: _date) -> RegimeImplications | None:
 # ---------- Live + synthetic paths ----------
 
 
-def _from_live(labels: "pl.DataFrame", returns: "pl.DataFrame") -> RegimeImplications:
+def _from_live(labels: pl.DataFrame, returns: pl.DataFrame) -> RegimeImplications:
     sorted_lbls = labels.sort("feature_date")
     latest_row = sorted_lbls.tail(1).to_dicts()[0]
     regime = int(latest_row["regime_state"])
@@ -223,8 +225,8 @@ def _reconstruct_probs(regime: int) -> dict[int, float]:
     return {k: v / total for k, v in base.items()}
 
 
-def _days_in_run_to(labels: "pl.DataFrame", target: _date) -> int | None:
-    import polars as pl  # noqa: PLC0415 - lazy import; live path only
+def _days_in_run_to(labels: pl.DataFrame, target: _date) -> int | None:
+    import polars as pl
 
     sub = labels.sort("feature_date").filter(pl.col("feature_date") <= target)
     if sub.height == 0:

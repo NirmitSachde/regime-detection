@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -23,20 +22,26 @@ if not summary_path.exists():
 
 summaries = json.loads(summary_path.read_text())
 labels = [f"{s['strategy']} / {s['ticker']}" for s in summaries]
-choice = st.selectbox("Strategy", options=list(range(len(summaries))), format_func=lambda i: labels[i])
+choice = st.selectbox(
+    "Strategy", options=list(range(len(summaries))), format_func=lambda i: labels[i]
+)
 sm = summaries[choice]
 
 st.subheader("Summary")
 cols = st.columns(4)
-cols[0].metric("Sharpe", f"{sm['sharpe']:.2f}", f"[{sm['bootstrap_sharpe_ci_low']:.2f}, {sm['bootstrap_sharpe_ci_high']:.2f}]")
-cols[1].metric("CAGR", f"{sm['cagr']*100:.2f}%")
-cols[2].metric("Max DD", f"{sm['max_drawdown']*100:.2f}%")
+cols[0].metric(
+    "Sharpe",
+    f"{sm['sharpe']:.2f}",
+    f"[{sm['bootstrap_sharpe_ci_low']:.2f}, {sm['bootstrap_sharpe_ci_high']:.2f}]",
+)
+cols[1].metric("CAGR", f"{sm['cagr'] * 100:.2f}%")
+cols[2].metric("Max DD", f"{sm['max_drawdown'] * 100:.2f}%")
 cols[3].metric("Calmar", f"{sm['calmar']:.2f}")
 
 cols2 = st.columns(4)
 cols2[0].metric("Sortino", f"{sm['sortino']:.2f}")
-cols2[1].metric("Hit rate", f"{sm['hit_rate']*100:.1f}%")
-cols2[2].metric("Exposure", f"{sm['exposure']*100:.1f}%")
+cols2[1].metric("Hit rate", f"{sm['hit_rate'] * 100:.1f}%")
+cols2[2].metric("Exposure", f"{sm['exposure'] * 100:.1f}%")
 cols2[3].metric("# trades", sm["n_trades"])
 
 # Find the latest run dir matching strategy+ticker

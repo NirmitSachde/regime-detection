@@ -11,14 +11,10 @@ import numpy as np
 import polars as pl
 
 
-def label_from_hmm_states(
-    feature_dates: pl.Series, hmm_states: np.ndarray
-) -> pl.DataFrame:
+def label_from_hmm_states(feature_dates: pl.Series, hmm_states: np.ndarray) -> pl.DataFrame:
     """Bind HMM-predicted states back onto dates."""
     if len(feature_dates) != len(hmm_states):
-        raise ValueError(
-            f"length mismatch: dates={len(feature_dates)} states={len(hmm_states)}"
-        )
+        raise ValueError(f"length mismatch: dates={len(feature_dates)} states={len(hmm_states)}")
     return pl.DataFrame(
         {
             "feature_date": feature_dates,
@@ -27,9 +23,7 @@ def label_from_hmm_states(
     )
 
 
-def join_labels_onto_features(
-    features: pl.DataFrame, labels: pl.DataFrame
-) -> pl.DataFrame:
+def join_labels_onto_features(features: pl.DataFrame, labels: pl.DataFrame) -> pl.DataFrame:
     """Left-join the per-date regime label onto a (ticker, trade_date) feature frame."""
     if "trade_date" not in features.columns:
         raise ValueError("features must have a `trade_date` column")

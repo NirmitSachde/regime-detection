@@ -32,7 +32,7 @@ class OHLCVBar(BaseModel):
 
     @field_validator("high")
     @classmethod
-    def _high_ge_low(cls, v: float, info: object) -> float:  # noqa: ARG003
+    def _high_ge_low(cls, v: float, info: object) -> float:
         return v
 
 
