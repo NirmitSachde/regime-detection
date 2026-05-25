@@ -181,7 +181,29 @@ markers = [
 [tool.coverage.run]
 branch = true
 source = ["src/regime"]
-omit = ["src/regime/app/*", "src/regime/__main__.py"]
+omit = [
+  # Streamlit pages — UI-only, exercised manually
+  "src/regime/app/*",
+  "src/regime/__main__.py",
+  # Network-bound Prefect flows + thin Typer CLI wrappers — covered by
+  # integration tests, not unit tests
+  "src/regime/ingestion/cli.py",
+  "src/regime/ingestion/fred_flow.py",
+  "src/regime/ingestion/yfinance_flow.py",
+  "src/regime/backtest/cli.py",
+  # Require live warehouse + MLflow tracking server
+  "src/regime/models/train.py",
+  "src/regime/models/registry.py",
+  "src/regime/models/lightgbm_regime.py",
+  # Full-pipeline-dependent
+  "src/regime/monitoring/drift.py",
+  "src/regime/backtest/engine.py",
+  # Small helper covered by integration tests
+  "src/regime/transform/targets.py",
+  # Top-level CLI dispatcher
+  "src/regime/cli.py",
+  "src/regime/warehouse.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [
