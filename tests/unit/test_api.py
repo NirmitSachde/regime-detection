@@ -35,6 +35,8 @@ def test_regime_latest_shape() -> None:
     assert set(body["probabilities"].keys()) == {"0", "1", "2"}
     total = sum(body["probabilities"].values())
     assert 0.99 < total < 1.01  # rounded probabilities sum to ~1
+    # Every regime response must self-declare its source
+    assert body["data_source"] in {"warehouse", "synthetic"}
 
 
 def test_regime_history_limit_enforced() -> None:
@@ -43,6 +45,17 @@ def test_regime_history_limit_enforced() -> None:
     body = r.json()
     assert body["n"] <= 10
     assert len(body["items"]) == body["n"]
+
+
+def test_regime_history_returns_most_recent_days() -> None:
+    """The fix for the original bug: limit picks the LATEST n, not the first n."""
+    r10 = client.get("/regime/history?limit=10").json()
+    r5 = client.get("/regime/history?limit=5").json()
+    # Last date of limit=5 must equal last date of limit=10 (most-recent slice)
+    assert r5["items"][-1]["date"] == r10["items"][-1]["date"]
+    # Returned chronologically (oldest first, latest last)
+    dates = [item["date"] for item in r10["items"]]
+    assert dates == sorted(dates)
 
 
 def test_regime_unknown_date_returns_404() -> None:

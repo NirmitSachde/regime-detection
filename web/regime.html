@@ -116,21 +116,34 @@
     const SHORT = {0: "Bull", 1: "Chop", 2: "Bear"};
     const RISK = {0: "Risk-On", 1: "Neutral", 2: "Risk-Off"};
 
-    function showStatus(source) {
+    function showStatus(payload) {
       const slot = document.getElementById("status-banner-slot");
-      if (source === "sample") {
+      const src = payload._source;     // 'live' if API responded, else 'sample'
+      const ds  = payload.data_source; // 'warehouse' or 'synthetic' (from API)
+      if (src === "sample") {
         slot.innerHTML = `
           <div class="status-banner sample">
-            <strong>Sample data.</strong> The live API isn't configured or is unreachable.
-            Set <code>API_BASE</code> in <code>config.js</code> to point at your deployed
-            FastAPI service. Until then, all panels render from baked-in synthetic data.
+            <strong>Synthetic data, no API.</strong> The live API isn't configured or
+            is unreachable. Set <code>API_BASE</code> in <code>config.js</code> to your
+            deployed FastAPI URL. Until then all panels render from baked-in synthetic data.
+          </div>`;
+      } else if (ds === "synthetic") {
+        slot.innerHTML = `
+          <div class="status-banner sample">
+            <strong>Live API, synthetic data.</strong> The API at
+            <code>${APIClient.status.apiBase}</code> is reachable but the deployed
+            container has no DuckDB warehouse, so it's serving its baked-in synthetic
+            sample. Numbers below are illustrative, not real market data. Run the
+            pipeline locally (<code>make ingest dbt-build train</code>) and ship a
+            container with <code>data/warehouse.duckdb</code> to swap in real numbers.
           </div>`;
       }
+      // else dataSource === "warehouse" — silent, real pipeline output
     }
 
     async function init() {
       const latest = await APIClient.call("/regime/latest");
-      showStatus(latest._source);
+      showStatus(latest);
       renderHero(latest);
       renderMetrics(latest);
       renderProbs(latest.probabilities);

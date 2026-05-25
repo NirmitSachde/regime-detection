@@ -127,21 +127,33 @@
     const RISK_CLASS = {"Risk-On": "risk-on", "Risk-Off": "risk-off", "Neutral": "neutral"};
     const TILT_KEY = {"Overweight": "ow", "Underweight": "uw", "Neutral": "n"};
 
-    function showStatus(source) {
+    function showStatus(payload) {
       const slot = document.getElementById("status-banner-slot");
-      if (source === "sample") {
+      const src = payload._source;
+      const ds  = payload.data_source; // 'live' or 'synthetic' from the service
+      if (src === "sample") {
         slot.innerHTML = `
           <div class="status-banner sample">
-            <strong>Sample data.</strong> Showing synthetic regime + allocation guidance.
-            Deploy the FastAPI and set <code>API_BASE</code> in <code>config.js</code> to
-            see the model's live output here.
+            <strong>Synthetic data, no API.</strong> Showing baked-in regime + allocation
+            guidance. Set <code>API_BASE</code> in <code>config.js</code> to your deployed
+            FastAPI URL to see the model's live output.
+          </div>`;
+      } else if (ds === "synthetic") {
+        slot.innerHTML = `
+          <div class="status-banner sample">
+            <strong>Live API, synthetic data.</strong> The API is reachable but its
+            container has no DuckDB warehouse, so the regime classification, historical
+            stats, and probabilities below are all illustrative — designed so the demo
+            tells a sensible story, not measured from real data. The allocation policy
+            itself (the tilts and rationale) is the same logic the live system would
+            apply to real regimes.
           </div>`;
       }
     }
 
     async function init() {
       const d = await APIClient.call("/regime/implications/latest");
-      showStatus(d._source);
+      showStatus(d);
       renderHero(d);
       renderMetrics(d);
       renderTilts(d.allocation);

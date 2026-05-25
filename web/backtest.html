@@ -125,20 +125,31 @@
     };
     let lastEquity = null;
 
-    function showStatus(source) {
+    function showStatus(payload) {
       const slot = document.getElementById("status-banner-slot");
-      if (source === "sample") {
+      const src = payload._source;
+      const ds  = payload.data_source;
+      if (src === "sample") {
         slot.innerHTML = `
           <div class="status-banner sample">
-            <strong>Sample data.</strong> The numbers below come from a synthetic SPY-like series.
-            Run the pipeline locally and deploy the API for live numbers.
+            <strong>Synthetic data, no API.</strong> Numbers below are from a baked-in
+            synthetic SPY-like series, not a real backtest. Deploy the API for the
+            live pipeline's output.
+          </div>`;
+      } else if (ds === "synthetic") {
+        slot.innerHTML = `
+          <div class="status-banner sample">
+            <strong>Live API, synthetic data.</strong> The API is reachable but its
+            container has no warehouse, so these are illustrative numbers from the
+            deterministic synthetic series. Real backtest numbers appear after the
+            pipeline runs against ingested data.
           </div>`;
       }
     }
 
     async function init() {
       const d = await APIClient.call("/backtest/summary");
-      showStatus(d._source);
+      showStatus(d);
       renderHeadline(d);
       renderTable(d);
       renderEquity();

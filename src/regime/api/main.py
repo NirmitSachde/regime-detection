@@ -25,11 +25,28 @@ from pydantic import BaseModel, Field
 
 from regime import __version__
 from regime.api import sample
+from regime.config import get_settings
 from regime.implications import (
     RegimeImplications,
     get_implications_for_date,
     get_latest_implications,
 )
+
+
+def _current_data_source() -> str:
+    """Return 'warehouse' if a populated DuckDB exists, else 'synthetic'.
+
+    The same module powers all endpoints; this single check decides
+    whether responses surface real pipeline output or the baked-in
+    sample data. On Render's free-tier container there is no warehouse,
+    so this always returns 'synthetic' there.
+    """
+    settings = get_settings()
+    labels_path = settings.data_dir / "models" / "hmm" / "labels.parquet"
+    if settings.duckdb_path.exists() and labels_path.exists():
+        return "warehouse"
+    return "synthetic"
+
 
 app = FastAPI(
     title="regime-detection API",
@@ -82,11 +99,15 @@ class RegimeClassification(BaseModel):
     regime_label: str
     probabilities: dict[str, float]
     price: float
+    data_source: str = Field(
+        description="'warehouse' if served from real ingested data, 'synthetic' otherwise"
+    )
 
 
 class RegimeHistory(BaseModel):
     n: int
     items: list[RegimeClassification]
+    data_source: str
 
 
 class StrategyStats(BaseModel):
@@ -105,6 +126,7 @@ class BacktestSummary(BaseModel):
     strategies: list[StrategyStats]
     sharpe_improvement: float
     note: str
+    data_source: str
 
 
 class RegimeStateCount(BaseModel):
@@ -118,6 +140,7 @@ class RegimeDistribution(BaseModel):
     as_of: str
     total_days: int
     states: list[RegimeStateCount]
+    data_source: str
 
 
 class APIIndex(BaseModel):
@@ -173,7 +196,7 @@ def health() -> HealthResponse:
 def regime_latest() -> RegimeClassification:
     """Most recent regime classification with probability vector."""
     data = sample.latest_regime()
-    return RegimeClassification(**data)
+    return RegimeClassification(**data, data_source=_current_data_source())
 
 
 # NOTE: static-path routes (/regime/history, /regime/distribution,
@@ -188,11 +211,13 @@ def regime_history(
     end: Annotated[date | None, Query(description="Inclusive end date")] = None,
     limit: Annotated[int, Query(ge=1, le=2000, description="Max rows")] = 365,
 ) -> RegimeHistory:
-    """Time-series of regime classifications. Caps at 2000 rows."""
+    """Time-series of the most-recent `limit` classifications. Caps at 2000."""
     items = sample.regime_history(start, end, limit)
+    src = _current_data_source()
     return RegimeHistory(
         n=len(items),
-        items=[RegimeClassification(**r) for r in items],
+        items=[RegimeClassification(**r, data_source=src) for r in items],
+        data_source=src,
     )
 
 
@@ -204,6 +229,7 @@ def regime_distribution() -> RegimeDistribution:
         as_of=data["as_of"],
         total_days=data["total_days"],
         states=[RegimeStateCount(**s) for s in data["states"]],
+        data_source=_current_data_source(),
     )
 
 
@@ -216,7 +242,7 @@ def regime_for_day(day: date) -> RegimeClassification:
             status_code=404,
             detail=f"No regime classification available for {day.isoformat()}",
         )
-    return RegimeClassification(**data)
+    return RegimeClassification(**data, data_source=_current_data_source())
 
 
 @app.get(
@@ -259,6 +285,7 @@ def backtest_summary() -> BacktestSummary:
         strategies=[StrategyStats(**s) for s in data["strategies"]],
         sharpe_improvement=data["sharpe_improvement"],
         note=data["note"],
+        data_source=_current_data_source(),
     )
 
 

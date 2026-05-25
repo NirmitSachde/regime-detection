@@ -122,17 +122,24 @@ def latest_regime() -> dict[str, Any]:
 
 
 def regime_history(start: date | None, end: date | None, limit: int) -> list[dict[str, Any]]:
+    """Return the most-recent `limit` classifications within [start, end].
+
+    Iterates newest-first so a bare `?limit=90` returns the last 90 days,
+    not the first 90. The returned list is then re-sorted oldest-first
+    so the timeline renders left-to-right in chronological order.
+    """
     out: list[dict[str, Any]] = []
-    for d in _DATES:
+    for d in reversed(_DATES):
         if start and d < start:
             continue
         if end and d > end:
-            break
+            continue
         r = regime_for_date(d)
         if r:
             out.append(r)
         if len(out) >= limit:
             break
+    out.reverse()  # chronological for downstream timeline rendering
     return out
 
 

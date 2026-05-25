@@ -110,7 +110,7 @@
 
     const apiBase = ((window.SITE_CONFIG && window.SITE_CONFIG.API_BASE) || "").replace(/\/+$/, "");
 
-    function showStatus(source) {
+    function showStatus() {
       const slot = document.getElementById("status-banner-slot");
       if (!apiBase) {
         slot.innerHTML = `
@@ -118,6 +118,14 @@
             <strong>No API configured.</strong> Endpoints will respond from baked-in sample
             data. Edit <code>web/config.js</code>, set <code>API_BASE</code> to your
             deployed FastAPI URL, then redeploy. The page detects it automatically.
+          </div>`;
+      } else {
+        slot.innerHTML = `
+          <div class="status-banner live">
+            <strong>API base:</strong> <code>${apiBase}</code>. The
+            <code>data_source</code> field on every response tells you whether
+            the API is reading from a real warehouse (<em>warehouse</em>) or
+            its baked-in synthetic fallback (<em>synthetic</em>).
           </div>`;
       }
     }

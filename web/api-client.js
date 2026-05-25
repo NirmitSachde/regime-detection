@@ -13,15 +13,20 @@
   const _cache = new Map();      // path → { at, body }
 
   // Observable status — pages render a banner from this
+  // mode:        whether the API call succeeded ('live') or fell back ('sample')
+  // dataSource:  what the API itself reports — 'warehouse' (real pipeline data)
+  //              or 'synthetic' (baked-in fallback). null until first call.
   const status = {
     mode: "unknown",          // "live" | "sample" | "loading"
+    dataSource: null,         // "warehouse" | "synthetic" | null
     apiBase: API_BASE,
     lastError: null,
     listeners: new Set(),
     subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
-    set(mode, err) {
+    set(mode, err, dataSource) {
       this.mode = mode;
       this.lastError = err || null;
+      if (dataSource !== undefined) this.dataSource = dataSource;
       this.listeners.forEach((fn) => { try { fn(this); } catch {} });
     },
   };
@@ -50,19 +55,21 @@
     if (!API_BASE) {
       const body = _sampleFor(path);
       _cache.set(path, { at: Date.now(), body, source: "sample" });
-      status.set("sample");
+      status.set("sample", null, "synthetic");
       return { ...body, _source: "sample" };
     }
 
     try {
       const body = await _fetch(`${API_BASE}${path}`);
       _cache.set(path, { at: Date.now(), body, source: "live" });
-      status.set("live");
+      // Trust the data_source field from the response when present
+      const ds = body && body.data_source ? body.data_source : null;
+      status.set("live", null, ds);
       return { ...body, _source: "live" };
     } catch (err) {
       const body = _sampleFor(path);
       _cache.set(path, { at: Date.now(), body, source: "sample" });
-      status.set("sample", err.message || String(err));
+      status.set("sample", err.message || String(err), "synthetic");
       return { ...body, _source: "sample" };
     }
   }
@@ -98,6 +105,7 @@
           n_days: regimes.filter((r) => r === s).length,
           pct: total ? +(100 * regimes.filter((r) => r === s).length / total).toFixed(1) : 0,
         })),
+        data_source: "synthetic",
       };
     }
 
@@ -109,7 +117,7 @@
       for (let i = start; i < dates.length; i++) {
         items.push(_sampleRegime(dates[i], regimes[i], prices[i], labels));
       }
-      return { n: items.length, items };
+      return { n: items.length, items, data_source: "synthetic" };
     }
 
     if (path.startsWith("/regime/implications/latest") || path === "/regime/implications/latest") {
@@ -160,6 +168,7 @@
         ],
         sharpe_improvement: 2.30,
         note: "Sample-data response. Deploy the FastAPI and set API_BASE in config.js to see live numbers.",
+        data_source: "synthetic",
       };
     }
 
@@ -183,6 +192,7 @@
         "2": +(probs[2] / total).toFixed(4),
       },
       price,
+      data_source: "synthetic",
     };
   }
 
