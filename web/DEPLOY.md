@@ -1,96 +1,136 @@
-# Deploy this site
+# Deploy guide
 
-This is a **fully static** site — pure HTML, CSS, and vanilla JS, with charts
-rendered client-side via Plotly's CDN. No build step, no server, no API.
-Anywhere that serves static files will work.
+Three artifacts to host:
 
-## Test locally (no install needed)
+1. **Static landing site** &mdash; `web/index.html` + assets &rarr; GitHub Pages
+2. **Code reference** (pdoc) &mdash; generated from Python docstrings &rarr; GitHub Pages `/reference/` subpath
+3. **REST API** &mdash; FastAPI at `src/regime/api/main.py` &rarr; Render (free tier)
+
+Everything is free. No credit card required.
+
+---
+
+## 0. One-time GitHub setup
+
+Push the repo. Do **not** add Claude or any AI assistant as a repo collaborator.
 
 ```bash
-cd web
-python3 -m http.server 8000
-# → http://localhost:8000
+cd "regime detection"
+git remote add origin git@github.com:<your-handle>/regime-detection.git
+git push -u origin main
 ```
 
-Or just double-click `web/index.html` — it'll open with `file://` and work fine.
+In **Settings &rarr; Pages &rarr; Build and deployment**, set **Source** to
+**GitHub Actions**. That's it &mdash; the workflow in
+`.github/workflows/pages.yml` handles the rest.
 
-## Deploy to GitHub Pages (free)
+---
 
-1. Push the repo to GitHub:
-   ```bash
-   git remote add origin git@github.com:<your-user>/<repo>.git
-   git push -u origin main
-   ```
+## 1. Landing site + code reference &rarr; GitHub Pages
 
-2. In GitHub: **Settings → Pages → Build and deployment**
-   - **Source:** Deploy from a branch
-   - **Branch:** `main` / `/web`
-   - Click **Save**
+This is automatic. On every push to `main`, the workflow:
 
-3. Within ~1 minute the site is live at:
-   `https://<your-user>.github.io/<repo>/`
+1. Installs uv and Python 3.12.
+2. Runs `pdoc` against `src/regime/` to build the code reference into `docs-site/`.
+3. Copies `web/` into `_site/`.
+4. Copies `docs-site/` into `_site/reference/`.
+5. Uploads `_site/` as the Pages artifact and deploys.
 
-If your repo name is `<your-user>.github.io`, the site goes to the root URL.
+After the first run the site is live at:
 
-> Pages needs the folder option `/web` to be enabled — older Pages UIs only
-> offer `/` or `/docs`. If you only see those, either rename `web/` → `docs/`
-> or use a GitHub Action (see below).
-
-## Deploy to GitHub Pages via Action (works with any folder)
-
-Create `.github/workflows/pages.yml`:
-
-```yaml
-name: Deploy site
-on:
-  push:
-    branches: [main]
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: web
-      - id: deployment
-        uses: actions/deploy-pages@v4
+```
+https://<your-handle>.github.io/regime-detection/
+https://<your-handle>.github.io/regime-detection/reference/
 ```
 
-Then in **Settings → Pages → Source**, pick **GitHub Actions**.
+**Build it locally first to preview:**
 
-## Deploy elsewhere
+```bash
+make docs           # builds ./docs-site/
+make docs-serve     # builds + serves at http://localhost:8088
+```
 
-| Host | How |
+---
+
+## 2. FastAPI &rarr; Render
+
+Render's free tier hosts the API. The repo includes `render.yaml` and
+`Dockerfile.api` &mdash; one-click deploy.
+
+1. Go to <https://dashboard.render.com/blueprints>.
+2. Click **New Blueprint Instance**.
+3. Connect your GitHub account and pick this repo.
+4. Render reads `render.yaml`, provisions a web service, builds with
+   `Dockerfile.api`, and exposes it at `https://<service-name>.onrender.com`.
+
+Once it's up:
+
+```
+https://<service-name>.onrender.com/health
+https://<service-name>.onrender.com/regime/latest
+https://<service-name>.onrender.com/docs       (interactive Swagger UI)
+https://<service-name>.onrender.com/redoc       (ReDoc layout)
+```
+
+**Free-tier caveats:**
+
+- Service sleeps after 15 min idle &mdash; first request after sleep costs ~50s
+  cold start.
+- 750 free hours/month per account.
+- For "always warm" behaviour, point a free uptime monitor at `/health`
+  (e.g. <https://uptimerobot.com>) every 10 min.
+
+**Locking down CORS** &mdash; in `src/regime/api/main.py`, change
+`allow_origins=["*"]` to your actual Pages origin:
+
+```python
+allow_origins=["https://<your-handle>.github.io"],
+```
+
+---
+
+## 3. Wire the static site to your live URLs
+
+Edit `web/config.js`:
+
+```js
+window.SITE_CONFIG = {
+  API_BASE:   "https://<your-service>.onrender.com",
+  GITHUB_URL: "https://github.com/<your-handle>/regime-detection",
+};
+```
+
+Commit, push, and the GH Pages workflow re-deploys. The "API", "Reference",
+and "GitHub" links in the nav + footer now point at your live services.
+
+If `API_BASE` is empty, the API links hide automatically. Same for `GITHUB_URL`.
+
+---
+
+## Other hosts (if you don't want Render)
+
+| Host | What you change |
 |---|---|
-| **Vercel** | `vercel deploy web` — done. Free hobby tier. |
-| **Netlify** | Drag-and-drop the `web/` folder into the Netlify dashboard, or `netlify deploy --dir=web --prod`. |
-| **Cloudflare Pages** | Connect repo, set **Build output directory** to `web`. No build command. |
-| **Surge** | `npm i -g surge && cd web && surge` |
+| **Fly.io** | `fly launch --dockerfile Dockerfile.api`. Free tier is restricted now &mdash; check current limits. |
+| **Railway** | New project &rarr; Deploy from repo &rarr; pick `Dockerfile.api`. ~$5/mo of free credit. |
+| **Cloudflare Workers** | Doesn't support arbitrary Python &mdash; would require a rewrite to JS or Pyodide. Skip. |
+| **AWS App Runner / Google Cloud Run** | Both work with `Dockerfile.api`. Pay-as-you-go, scales to zero. Free tier covers low traffic. |
 
-## Updating the demo data
+Static landing + reference can also go to **Cloudflare Pages**, **Vercel**, or
+**Netlify** &mdash; point them at the `_site/` artifact built by the same workflow
+(or point them at `web/` and run `pdoc` in their build step).
 
-The interactive charts pull from `web/sample_data.js`, generated by the Python
-block in the project README. To replace it with **real** pipeline output:
+---
+
+## Local development
 
 ```bash
-# after running `make ingest && make train && make backtest`
-uv run python scripts/export_demo_data.py  # (build this when you're ready)
+make api            # FastAPI with auto-reload, http://localhost:8000
+make docs-serve     # pdoc reference at http://localhost:8088
+cd web && python3 -m http.server 8000   # static site
 ```
 
-Then re-deploy — the new data shows up automatically.
-
-## Customizing
-
-- **Colors / theme** — edit CSS custom properties in `:root` of `styles.css`.
-- **Copy** — every section in `index.html` is plain HTML.
-- **Add charts** — drop a `<div id="chart-foo" class="chart"></div>` and a
-  matching `Plotly.react(...)` call in `app.js`.
+The static site loads sample data baked into `web/sample_data.js`, so it works
+without the API running. Once you set `API_BASE` in `config.js` and the API is
+reachable, you can wire the demo charts to call live endpoints (see
+`app.js` &mdash; left as a small follow-up).

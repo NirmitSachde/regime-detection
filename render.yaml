@@ -1,0 +1,29 @@
+# Render Blueprint — one-click deploy of the regime-detection API.
+# https://render.com/docs/blueprint-spec
+#
+# To deploy:
+#   1. Push this repo to GitHub.
+#   2. https://dashboard.render.com/blueprints  →  New Blueprint Instance
+#   3. Point at the repo. Render reads this file and provisions the service.
+#
+# Free tier notes:
+#   - The service sleeps after 15 min of inactivity. First request after sleep
+#     takes ~50s (cold start). Add an uptime monitor (e.g. https://uptimerobot.com)
+#     if you want it always warm.
+#   - 750 free hours / month per account.
+
+services:
+  - type: web
+    name: regime-detection-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.api
+    plan: free
+    region: oregon
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    autoDeploy: true

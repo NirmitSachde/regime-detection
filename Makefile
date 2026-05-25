@@ -65,6 +65,15 @@ streamlit:  ## Run Streamlit dashboard locally
 mlflow:  ## Run MLflow UI locally
 	$(UV) run mlflow ui --backend-store-uri ./data/mlruns --host 0.0.0.0 --port 5000
 
+api:  ## Run FastAPI in dev mode (auto-reload)
+	$(UV) run uvicorn regime.api.main:app --reload --host 0.0.0.0 --port 8000
+
+docs:  ## Build code reference with pdoc into ./docs-site/
+	./scripts/build_docs.sh docs-site
+
+docs-serve: docs  ## Build and serve docs locally
+	python3 -m http.server --directory docs-site 8088
+
 clean:  ## Remove caches, build artifacts (keeps data/)
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov build dist *.egg-info
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
