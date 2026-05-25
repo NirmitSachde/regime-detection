@@ -21,6 +21,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from regime import __version__
@@ -69,6 +70,27 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
+
+
+# Catch-all handler so 500s don't disappear into the Render log void.
+# Logs the traceback to stderr (visible in Render's log stream) and
+# returns a structured JSON error to the client.
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(_request: object, exc: Exception) -> JSONResponse:
+    import sys
+    import traceback
+
+    tb = traceback.format_exc()
+    print(f"[api] unhandled exception:\n{tb}", file=sys.stderr, flush=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error_type": type(exc).__name__,
+            "error_message": str(exc)[:200],
+        },
+    )
+
 
 # CORS — the static landing site is on a different origin (GH Pages).
 # Allow the Pages site explicitly + wildcard so curl + other origins still work.

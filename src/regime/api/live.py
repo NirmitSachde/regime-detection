@@ -132,19 +132,21 @@ def regime_history(start: _date | None, end: _date | None, limit: int) -> list[d
 
     con = duckdb.connect(str(get_settings().duckdb_path), read_only=True)
     try:
-        # Pull SPY prices for the same dates in one query to avoid per-row roundtrips
-        prices = con.execute(
+        # .fetchall() returns plain tuples — more portable across the
+        # duckdb/polars version matrix than .pl() (which has had interop
+        # regressions). Each row is (date, float).
+        rows = con.execute(
             """
             select trade_date, adj_close
             from main_marts.mart_features
             where ticker = 'SPY'
             order by trade_date
             """
-        ).pl()
+        ).fetchall()
     finally:
         con.close()
 
-    px_map = {r["trade_date"]: float(r["adj_close"]) for r in prices.iter_rows(named=True)}
+    px_map: dict[_date, float] = {r[0]: float(r[1]) for r in rows}
     out: list[dict[str, Any]] = []
     for r in labels.iter_rows(named=True):
         d = r["feature_date"]

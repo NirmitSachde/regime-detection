@@ -166,14 +166,24 @@ def load_labels_and_returns(
 
     con = duckdb.connect(str(duckdb_path), read_only=True)
     try:
-        returns = con.execute(
+        # .fetchall() returns plain tuples — more portable across the
+        # duckdb/polars version matrix than .pl() (which has had interop
+        # regressions on Render's slim image). Reconstruct the Polars
+        # DataFrame manually from the tuples.
+        rows = con.execute(
             f"""
             select trade_date, log_ret_1d
             from main_intermediate.int_returns
             where ticker = '{proxy}'
               and log_ret_1d is not null
             """
-        ).pl()
+        ).fetchall()
+        returns = pl.DataFrame(
+            {
+                "trade_date": [r[0] for r in rows],
+                "log_ret_1d": [float(r[1]) for r in rows],
+            }
+        )
     except Exception as exc:
         # Log loudly instead of silently falling back — bare `except: return None`
         # was hiding the real reason live data wouldn't load on Render.
