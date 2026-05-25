@@ -30,6 +30,8 @@ def main() -> None:
         market-regime detection pipeline. Use the sidebar to navigate.
 
         - **Live Regime** — current regime probabilities + last 90 days of states.
+        - **Regime Implications** — what the current regime means for asset allocation,
+          translated from probabilities into PM-facing tilt recommendations with bps.
         - **Backtest Replay** — pick a strategy, see equity / drawdown / trades.
         - **Research** — EDA charts and methodology notes.
         - **About** — links to MLflow, repo, research memo.

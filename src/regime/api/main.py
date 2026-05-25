@@ -25,6 +25,11 @@ from pydantic import BaseModel, Field
 
 from regime import __version__
 from regime.api import sample
+from regime.implications import (
+    RegimeImplications,
+    get_implications_for_date,
+    get_latest_implications,
+)
 
 app = FastAPI(
     title="regime-detection API",
@@ -163,6 +168,37 @@ def regime_distribution() -> RegimeDistribution:
         total_days=data["total_days"],
         states=[RegimeStateCount(**s) for s in data["states"]],  # type: ignore[arg-type]
     )
+
+
+@app.get(
+    "/regime/implications/latest",
+    response_model=RegimeImplications,
+    tags=["implications"],
+)
+def implications_latest() -> RegimeImplications:
+    """PM-facing allocation guidance for the most recent regime classification.
+
+    Returns the regime, confidence, historical performance, recommended
+    asset-class tilts (in bps), and a plain-English headline suitable for
+    a daily PM brief.
+    """
+    return get_latest_implications()
+
+
+@app.get(
+    "/regime/implications/{day}",
+    response_model=RegimeImplications,
+    tags=["implications"],
+)
+def implications_for_day(day: date) -> RegimeImplications:
+    """Allocation guidance for a specific date (`YYYY-MM-DD`)."""
+    payload = get_implications_for_date(day)
+    if payload is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No regime classification available for {day.isoformat()}",
+        )
+    return payload
 
 
 @app.get("/backtest/summary", response_model=BacktestSummary, tags=["backtest"])
