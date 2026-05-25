@@ -174,7 +174,12 @@ def load_labels_and_returns(
               and log_ret_1d is not null
             """
         ).pl()
-    except Exception:
+    except Exception as exc:
+        # Log loudly instead of silently falling back — bare `except: return None`
+        # was hiding the real reason live data wouldn't load on Render.
+        import sys
+
+        print(f"[implications/stats] warehouse query failed: {exc!r}", file=sys.stderr)
         return None
     finally:
         con.close()

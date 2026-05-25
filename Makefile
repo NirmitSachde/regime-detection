@@ -78,12 +78,15 @@ docs-serve: docs  ## Build and serve docs locally
 # Real-data pipeline → bake into Docker image → push to Render
 # ---------------------------------------------------------------------
 
-real-data: ingest dbt-build train backtest  ## End-to-end: ingest + warehouse + train + backtest
+real-data: ingest dbt-build train backtest clean-warehouse-views  ## End-to-end: ingest + warehouse + train + backtest + strip path-dependent views
 	@echo
 	@echo "Pipeline complete. Verify what landed:"
 	@ls -lh data/warehouse.duckdb 2>/dev/null && \
 	  ls -lh data/models/hmm/labels.parquet 2>/dev/null && \
 	  echo "Ready to bake — run: make api-image"
+
+clean-warehouse-views:  ## Strip path-dependent views from the warehouse (required before shipping)
+	$(UV) run python scripts/clean_warehouse_for_shipping.py
 
 api-image:  ## Build Dockerfile.api locally with whatever's currently in data/
 	docker build -f Dockerfile.api -t regime-detection-api:latest .
