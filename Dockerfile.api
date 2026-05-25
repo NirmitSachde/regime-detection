@@ -11,13 +11,19 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Only the deps the API actually needs at runtime
+# Runtime deps for the API. polars + duckdb are needed by the live-data
+# path (regime.api.live), which is only invoked when the warehouse +
+# labels.parquet exist in /app/data — but when they do, polars/duckdb
+# must be importable. They're not optional.
 RUN pip install --no-cache-dir \
       "fastapi>=0.115" \
       "uvicorn[standard]>=0.32" \
       "pydantic>=2.9" \
       "pydantic-settings>=2.6" \
-      "structlog>=24.4"
+      "structlog>=24.4" \
+      "polars>=1.18" \
+      "duckdb>=1.1" \
+      "pyarrow>=18"
 
 COPY src/regime ./regime
 ENV PYTHONPATH=/app
