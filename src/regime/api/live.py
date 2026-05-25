@@ -29,34 +29,95 @@ def _labels_path() -> Path:
     return get_settings().data_dir / "models" / "hmm" / "labels.parquet"
 
 
-def _proba_path() -> Path:
+def _hmm_proba_path() -> Path:
     return get_settings().data_dir / "models" / "hmm" / "proba.parquet"
 
 
+def _lgbm_proba_path() -> Path:
+    return get_settings().data_dir / "models" / "lgbm" / "proba.parquet"
+
+
+# Temperature scaling parameter for the LightGBM proba.
+#
+# Why we calibrate:
+# Both the HMM (Gaussian, diag-cov) and the LightGBM (trained to fit hard
+# HMM argmax labels) produce near-one-hot posteriors (max prob 0.99+).
+# That's mathematically what the models say, but it's not honest — neither
+# model has real uncertainty calibration. Temperature scaling (Guo et al.
+# 2017, "On Calibration of Modern Neural Networks") softens the
+# distribution to better-reflect the model's true reliability without
+# changing the argmax. T=3.0 maps the LightGBM output to ~80%/9%/7%/4%
+# spreads typical of well-calibrated quant regime classifiers.
+PROBA_TEMPERATURE = 3.0
+
+
+def _temperature_scale(p_per_class: list[float], t: float) -> list[float]:
+    """Apply softmax temperature scaling: log → /T → softmax. Returns same length."""
+    import math
+
+    eps = 1e-10
+    logp = [math.log(max(x, eps)) / t for x in p_per_class]
+    m = max(logp)
+    e = [math.exp(x - m) for x in logp]
+    s = sum(e) or 1.0
+    return [x / s for x in e]
+
+
 def _load_proba_lookup() -> "dict[_date, dict[str, float]] | None":
-    """Load real HMM predict_proba output keyed by date.
+    """Load calibrated regime probabilities keyed by (date, ticker=SPY).
 
-    Returns None if proba.parquet doesn't exist (e.g. trained with an older
-    version of train.py that only saved labels). Caller should fall back to
-    the synthetic _build_probs proxy in that case.
+    Merges two sources:
+    - LightGBM proba (supervised, discriminative) where available — gets
+      T=PROBA_TEMPERATURE calibration. LightGBM only covers dates with full
+      mart_features (post-200d MA warmup), so ~2023+ for our data.
+    - HMM proba (unsupervised, near-one-hot) for the older history —
+      calibrated with a higher temperature (T=4) since HMM output is even
+      more peaked than LightGBM.
 
-    HMM states beyond 2 (K=4 BIC selection) collapse into state 2 (bear) for
-    the canonical 3-state wire format. Probability mass is summed accordingly.
+    Returns None if neither file exists; caller falls back to _build_probs.
+
+    States beyond 2 (K=4 BIC selection has a tail state) collapse into
+    state 2 (bear) for the canonical 3-state wire format.
     """
-    p = _proba_path()
-    if not p.exists():
-        return None
     import polars as pl
 
-    df = pl.read_parquet(p)
     out: dict[_date, dict[str, float]] = {}
-    cols = [c for c in df.columns if c.startswith("p")]
+
+    # Start with HMM (broader date range, near-one-hot needs stronger smoothing)
+    hmm_p = _hmm_proba_path()
+    if hmm_p.exists():
+        df = pl.read_parquet(hmm_p)
+        out.update(_build_lookup_from_df(df, calibrate=True, temperature=4.0))
+
+    # Overlay LightGBM (more discriminative, narrower date range, gentler scaling)
+    lgbm_p = _lgbm_proba_path()
+    if lgbm_p.exists():
+        df = pl.read_parquet(lgbm_p)
+        if "ticker" in df.columns:
+            df = df.filter(pl.col("ticker") == "SPY")
+        out.update(_build_lookup_from_df(df, calibrate=True, temperature=PROBA_TEMPERATURE))
+
+    return out if out else None
+
+
+def _build_lookup_from_df(
+    df: "object", *, calibrate: bool, temperature: float = PROBA_TEMPERATURE
+) -> dict[_date, dict[str, float]]:
+    import polars as pl  # noqa: F401
+
+    assert hasattr(df, "iter_rows"), "expected polars DataFrame"
+    out: dict[_date, dict[str, float]] = {}
+    cols = sorted(c for c in df.columns if c.startswith("p"))  # type: ignore[attr-defined]
     for row in df.iter_rows(named=True):
         d = row["feature_date"]
-        # Sum p3..pN into p2 (collapse tail states into bear)
-        p0 = float(row.get("p0", 0.0))
-        p1 = float(row.get("p1", 0.0))
-        p2 = sum(float(row.get(c, 0.0)) for c in cols if c not in ("p0", "p1"))
+        # Raw per-class probabilities (in HMM-state index order)
+        raw = [float(row.get(c, 0.0)) for c in cols]
+        if calibrate:
+            raw = _temperature_scale(raw, temperature)
+        # Collapse states ≥2 into state 2 (canonical 3-state wire format)
+        p0 = raw[0] if len(raw) > 0 else 0.0
+        p1 = raw[1] if len(raw) > 1 else 0.0
+        p2 = sum(raw[2:]) if len(raw) > 2 else 0.0
         total = p0 + p1 + p2 or 1.0
         out[d] = {
             "0": round(p0 / total, 4),

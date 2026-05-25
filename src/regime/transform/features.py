@@ -42,15 +42,21 @@ def lagged_macro_features(macro: pl.DataFrame, lag_days: int = 1) -> pl.DataFram
 
 
 def build_hmm_features(macro: pl.DataFrame) -> pl.DataFrame:
-    """HMM input: realized-vol-like, change-in-DXY, yield curve slope.
+    """HMM input: VIX level, VIX 5d change, DXY 5d change, yield curve slope.
 
     Returns a frame with `feature_date` and feature columns; rows with any
     null feature are dropped (HMM cannot consume NaN).
+
+    NOTE: `hy_oas` was previously in this set but FRED's `BAMLH0A0HYM2`
+    API only returned data from 2023-05-23 onwards (despite the series
+    existing since 1996 on the website). Including it truncated the HMM
+    training window to ~800 days. Dropped here to expand to ~2000 days
+    (2018-present). VIX + yield curve still capture macro stress.
     """
     lagged = lagged_macro_features(macro, lag_days=1)
     feat_cols = [
         c
-        for c in ("vix", "vix_chg_5d", "dxy_chg_5d", "yc_10y2y", "yc_chg_21d", "hy_oas")
+        for c in ("vix", "vix_chg_5d", "dxy_chg_5d", "yc_10y2y", "yc_chg_21d")
         if c in lagged.columns
     ]
     return lagged.select(["feature_date", *feat_cols]).drop_nulls()

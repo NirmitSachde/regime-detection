@@ -182,6 +182,42 @@ class APIIndex(BaseModel):
     endpoints: dict[str, str]
 
 
+class NotableEvent(BaseModel):
+    date: str
+    event: str
+    classification: RegimeClassification | None
+    note: str | None = None
+
+
+class NotableEventsResponse(BaseModel):
+    description: str
+    events: list[NotableEvent]
+    data_source: str
+
+
+# Canonical "interesting moments" for the demo. Chosen to span:
+# - Both regimes we'd expect the model to identify clearly (COVID, 2022 bear)
+# - Inflection points (2018 Q4, 2020 March, 2022 H1)
+# - Pure bull-trend periods (mid-2019, 2024) for contrast
+# - Recent stress (SVB 2023, yen unwind 2024)
+NOTABLE_DATES: list[tuple[str, str]] = [
+    ("2018-10-03", "Q4 2018 selloff begins (Fed hike + China trade)"),
+    ("2018-12-24", "Christmas Eve crash trough"),
+    ("2019-07-26", "Mid-2019 bull peak (pre yield-curve inversion)"),
+    ("2020-02-19", "Pre-COVID S&P 500 peak ($339 SPY)"),
+    ("2020-03-23", "COVID crash trough ($224 SPY, -34% in 5 weeks)"),
+    ("2020-08-19", "Post-COVID recovery peak"),
+    ("2021-11-08", "Late-2021 bull peak before correction"),
+    ("2022-01-03", "2022 bear market begins"),
+    ("2022-06-13", "Mid-2022 trough (Fed front-loading)"),
+    ("2022-10-12", "October 2022 CPI surprise / yields spike"),
+    ("2023-03-13", "SVB collapse week"),
+    ("2023-10-19", "Treasury yield spike (10Y >5%)"),
+    ("2024-08-05", "Yen carry unwind ('Bloody Monday')"),
+    ("2024-12-18", "Fed hawkish pivot"),
+]
+
+
 # ---------- Routes ----------
 
 
@@ -210,6 +246,7 @@ def index() -> APIIndex:
             "GET /regime/{date}": "Regime for a specific YYYY-MM-DD",
             "GET /regime/history": "Time-series of classifications (?start=&end=&limit=)",
             "GET /regime/distribution": "How many days spent in each regime",
+            "GET /regime/notable": "Classifications on historically notable trading days",
             "GET /regime/implications/latest": "PM-facing allocation guidance",
             "GET /regime/implications/{date}": "Allocation guidance for a specific date",
             "GET /backtest/summary": "Risk-adjusted stats for all three strategies",
@@ -261,6 +298,58 @@ def regime_distribution() -> RegimeDistribution:
         total_days=data["total_days"],
         states=[RegimeStateCount(**s) for s in data["states"]],
         data_source=_current_data_source(),
+    )
+
+
+@app.get("/regime/notable", response_model=NotableEventsResponse, tags=["regime"])
+def regime_notable() -> NotableEventsResponse:
+    """Regime classifications on historically notable trading days.
+
+    Useful as a "smoke test" of the model — does it identify COVID as
+    bear / high-vol, 2024 as bull / low-vol, etc.? Each event includes
+    the date, a one-line description, and the regime payload for that
+    date (or null if outside the training window).
+    """
+    src = _current_data_source()
+    mod = _data_module()
+    events: list[NotableEvent] = []
+    for iso, description in NOTABLE_DATES:
+        try:
+            d = date.fromisoformat(iso)
+            data = mod.regime_for_date(d)  # type: ignore[attr-defined]
+            if data is None:
+                events.append(
+                    NotableEvent(
+                        date=iso,
+                        event=description,
+                        classification=None,
+                        note="No classification available for this date",
+                    )
+                )
+            else:
+                events.append(
+                    NotableEvent(
+                        date=iso,
+                        event=description,
+                        classification=RegimeClassification(**data, data_source=src),
+                    )
+                )
+        except Exception as exc:
+            events.append(
+                NotableEvent(
+                    date=iso,
+                    event=description,
+                    classification=None,
+                    note=f"error: {type(exc).__name__}",
+                )
+            )
+    return NotableEventsResponse(
+        description=(
+            "Regime classification on notable trading days. "
+            "Sanity-check the model: COVID should land in bear, 2024 in bull, etc."
+        ),
+        events=events,
+        data_source=src,
     )
 
 

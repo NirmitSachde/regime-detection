@@ -103,6 +103,7 @@
       {path: "/regime/{date}", desc: "Regime for a specific date.", paramKey: "date", paramDefault: window.SAMPLE_DATA ? window.SAMPLE_DATA.dates[window.SAMPLE_DATA.dates.length - 1] : "2024-12-30"},
       {path: "/regime/history", desc: "Time-series of classifications. Query: ?start=&end=&limit=", paramKey: "limit", paramDefault: "30", paramAsQuery: true},
       {path: "/regime/distribution", desc: "How many days spent in each regime in the served window."},
+      {path: "/regime/notable", desc: "Classifications on historically notable trading days (COVID, 2022 bear, SVB, etc.)."},
       {path: "/regime/implications/latest", desc: "PM-facing allocation guidance for today."},
       {path: "/regime/implications/{date}", desc: "Allocation guidance for a specific date.", paramKey: "date", paramDefault: window.SAMPLE_DATA ? window.SAMPLE_DATA.dates[window.SAMPLE_DATA.dates.length - 1] : "2024-12-30"},
       {path: "/backtest/summary", desc: "Risk-adjusted stats for all three strategies."},
