@@ -13,8 +13,9 @@ WORKDIR /app
 
 # Runtime deps for the API. polars + duckdb are needed by the live-data
 # path (regime.api.live), which is only invoked when the warehouse +
-# labels.parquet exist in /app/data — but when they do, polars/duckdb
-# must be importable. They're not optional.
+# labels.parquet exist in /app/data. polars has its own parquet reader,
+# so pyarrow is intentionally omitted to keep the slim image small
+# enough to build on Render's free tier (~512MB build RAM).
 RUN pip install --no-cache-dir \
       "fastapi>=0.115" \
       "uvicorn[standard]>=0.32" \
@@ -22,8 +23,7 @@ RUN pip install --no-cache-dir \
       "pydantic-settings>=2.6" \
       "structlog>=24.4" \
       "polars>=1.18" \
-      "duckdb>=1.1" \
-      "pyarrow>=18"
+      "duckdb>=1.1"
 
 COPY src/regime ./regime
 ENV PYTHONPATH=/app

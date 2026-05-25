@@ -1,0 +1,48 @@
+# Things that shouldn't ship in the API Docker image. Render's build
+# context = the whole repo; keep it slim so the build completes within
+# the free tier's resource limits.
+
+# Python caches + venv
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Web + docs (Pages serves these, the API doesn't need them)
+web/
+docs/
+docs-site/
+notebooks/
+
+# dbt — runs locally, not on the API server
+dbt/
+
+# MLflow logs + raw parquet — API queries the materialised warehouse tables,
+# not the raw zone. data/warehouse.duckdb + data/models/ are KEPT.
+data/raw/
+data/mlruns/
+data/backtests/*/
+mlartifacts/
+mlruns/
+
+# Project meta / dev only
+.git/
+.github/
+.claude/
+01_handoff_*.md
+01_proposal_*.md
+README.md
+*.example
+Makefile
+docker-compose.yml
+Dockerfile
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
