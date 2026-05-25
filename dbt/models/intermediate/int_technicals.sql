@@ -39,7 +39,7 @@ ranged as (
             partition by ticker order by trade_date
             rows between 19 preceding and current row
         ) as ma_20,
-        stddev_samp(adj_close) over (
+        stddev_pop(adj_close) over (
             partition by ticker order by trade_date
             rows between 19 preceding and current row
         ) as sd_20
@@ -82,13 +82,13 @@ select
     end as bb_pctb_20,
     -- Volume Z-score (21d)
     case
-        when stddev_samp(volume) over (
+        when stddev_pop(volume) over (
                 partition by ticker order by trade_date
                 rows between 20 preceding and current row) > 0
         then (volume - avg(volume) over (
                 partition by ticker order by trade_date
                 rows between 20 preceding and current row))
-             / stddev_samp(volume) over (
+             / stddev_pop(volume) over (
                 partition by ticker order by trade_date
                 rows between 20 preceding and current row)
     end as volume_z_21

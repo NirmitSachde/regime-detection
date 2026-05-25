@@ -44,19 +44,26 @@ coverage.xml
 .ipynb_checkpoints/
 *-checkpoint.ipynb
 
-# Data + warehouse (large, regenerable)
+# Data + warehouse — raw zone is large and regenerable, skip.
 data/raw/
-data/warehouse.duckdb
 data/warehouse.duckdb.wal
-data/backtests/
 data/mlruns/
 mlruns/
 mlartifacts/
+# Per-run backtest artefact dirs (timestamped) — only ship summary_latest.json
+data/backtests/*/
+# But DO ship the warehouse + summary + models so the Docker image deployed
+# to Render boots with real data. These are small (warehouse ~13MB) and
+# the alternative (ghcr.io or release artifacts) is more moving parts.
+!data/warehouse.duckdb
+!data/backtests/summary_latest.json
+!data/models/**
 
 # dbt
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+dbt/.user.yml
 
 # Prefect
 .prefect/

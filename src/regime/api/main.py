@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from regime import __version__
-from regime.api import sample
+from regime.api import live, sample
 from regime.config import get_settings
 from regime.implications import (
     RegimeImplications,
@@ -46,6 +46,15 @@ def _current_data_source() -> str:
     if settings.duckdb_path.exists() and labels_path.exists():
         return "warehouse"
     return "synthetic"
+
+
+def _data_module() -> object:
+    """Pick the live module when warehouse is present, else the sample fallback.
+
+    Both modules expose the same function names + return shapes — the route
+    handlers below stay agnostic to the source.
+    """
+    return live if _current_data_source() == "warehouse" else sample
 
 
 app = FastAPI(
@@ -195,7 +204,7 @@ def health() -> HealthResponse:
 @app.get("/regime/latest", response_model=RegimeClassification, tags=["regime"])
 def regime_latest() -> RegimeClassification:
     """Most recent regime classification with probability vector."""
-    data = sample.latest_regime()
+    data = _data_module().latest_regime()  # type: ignore[attr-defined]
     return RegimeClassification(**data, data_source=_current_data_source())
 
 
@@ -212,7 +221,7 @@ def regime_history(
     limit: Annotated[int, Query(ge=1, le=2000, description="Max rows")] = 365,
 ) -> RegimeHistory:
     """Time-series of the most-recent `limit` classifications. Caps at 2000."""
-    items = sample.regime_history(start, end, limit)
+    items = _data_module().regime_history(start, end, limit)  # type: ignore[attr-defined]
     src = _current_data_source()
     return RegimeHistory(
         n=len(items),
@@ -224,7 +233,7 @@ def regime_history(
 @app.get("/regime/distribution", response_model=RegimeDistribution, tags=["regime"])
 def regime_distribution() -> RegimeDistribution:
     """How much time was spent in each regime, in the served data window."""
-    data = sample.regime_distribution()
+    data = _data_module().regime_distribution()  # type: ignore[attr-defined]
     return RegimeDistribution(
         as_of=data["as_of"],
         total_days=data["total_days"],
@@ -236,7 +245,7 @@ def regime_distribution() -> RegimeDistribution:
 @app.get("/regime/{day}", response_model=RegimeClassification, tags=["regime"])
 def regime_for_day(day: date) -> RegimeClassification:
     """Regime classification for a specific date (`YYYY-MM-DD`)."""
-    data = sample.regime_for_date(day)
+    data = _data_module().regime_for_date(day)  # type: ignore[attr-defined]
     if data is None:
         raise HTTPException(
             status_code=404,
@@ -279,13 +288,22 @@ def implications_for_day(day: date) -> RegimeImplications:
 @app.get("/backtest/summary", response_model=BacktestSummary, tags=["backtest"])
 def backtest_summary() -> BacktestSummary:
     """Risk-adjusted summary stats for all three strategies."""
-    data = sample.backtest_summary()
+    src = _current_data_source()
+    if src == "warehouse":
+        try:
+            data = live.backtest_summary()
+        except FileNotFoundError:
+            # warehouse exists but no backtest output yet — surface synthetic
+            data = sample.backtest_summary()
+            src = "synthetic"
+    else:
+        data = sample.backtest_summary()
     return BacktestSummary(
         as_of=data["as_of"],
         strategies=[StrategyStats(**s) for s in data["strategies"]],
         sharpe_improvement=data["sharpe_improvement"],
         note=data["note"],
-        data_source=_current_data_source(),
+        data_source=src,
     )
 
 

@@ -12,11 +12,15 @@ with src as (
         cast(volume as double)   as volume
     from {{ source('raw', 'prices') }}
 )
+-- Filter out NaN rows explicitly. DuckDB treats NaN > 0 as TRUE, so a
+-- bare `adj_close > 0` filter would let NaN through and poison every
+-- downstream rolling window. yfinance returns NaN for pre-listing dates
+-- of younger ETFs (XLC launched 2018-06; SPDR sector ETFs vary).
 select *
 from src
-where open > 0
-  and high > 0
-  and low > 0
-  and close > 0
-  and adj_close > 0
-  and volume >= 0
+where open > 0     and not isnan(open)
+  and high > 0     and not isnan(high)
+  and low > 0      and not isnan(low)
+  and close > 0    and not isnan(close)
+  and adj_close > 0 and not isnan(adj_close)
+  and volume >= 0  and not isnan(volume)

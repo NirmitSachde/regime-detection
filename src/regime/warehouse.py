@@ -22,14 +22,21 @@ def connect() -> duckdb.DuckDBPyConnection:
 
 
 def bootstrap() -> None:
-    """Create raw-zone schemas and views. Idempotent."""
+    """Create raw-zone schemas and views. Idempotent.
+
+    Uses absolute glob paths so that dbt (which runs from the dbt/ subdir)
+    can still resolve the parquet partitions when it opens the same
+    warehouse file.
+    """
     settings = get_settings()
     con = connect()
     try:
         con.execute("CREATE SCHEMA IF NOT EXISTS raw")
 
-        prices_glob = str(settings.prices_dir / "**" / "*.parquet")
-        macro_glob = str(settings.macro_dir / "**" / "*.parquet")
+        # Resolve the base dirs first (Path.resolve doesn't handle glob chars);
+        # then append the glob suffix as a string so DuckDB sees an absolute pattern.
+        prices_glob = f"{settings.prices_dir.resolve()}/**/*.parquet"
+        macro_glob = f"{settings.macro_dir.resolve()}/**/*.parquet"
 
         con.execute(
             f"""
