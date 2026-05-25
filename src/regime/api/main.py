@@ -133,16 +133,10 @@ def regime_latest() -> RegimeClassification:
     return RegimeClassification(**data)  # type: ignore[arg-type]
 
 
-@app.get("/regime/{day}", response_model=RegimeClassification, tags=["regime"])
-def regime_for_day(day: date) -> RegimeClassification:
-    """Regime classification for a specific date (`YYYY-MM-DD`)."""
-    data = sample.regime_for_date(day)
-    if data is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No regime classification available for {day.isoformat()}",
-        )
-    return RegimeClassification(**data)  # type: ignore[arg-type]
+# NOTE: static-path routes (/regime/history, /regime/distribution,
+# /regime/implications/...) MUST be declared BEFORE the catch-all
+# /regime/{day} route, otherwise FastAPI matches "history"/"distribution"
+# as the {day} path param and rejects with 422.
 
 
 @app.get("/regime/history", response_model=RegimeHistory, tags=["regime"])
@@ -168,6 +162,18 @@ def regime_distribution() -> RegimeDistribution:
         total_days=data["total_days"],
         states=[RegimeStateCount(**s) for s in data["states"]],  # type: ignore[arg-type]
     )
+
+
+@app.get("/regime/{day}", response_model=RegimeClassification, tags=["regime"])
+def regime_for_day(day: date) -> RegimeClassification:
+    """Regime classification for a specific date (`YYYY-MM-DD`)."""
+    data = sample.regime_for_date(day)
+    if data is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No regime classification available for {day.isoformat()}",
+        )
+    return RegimeClassification(**data)  # type: ignore[arg-type]
 
 
 @app.get(
