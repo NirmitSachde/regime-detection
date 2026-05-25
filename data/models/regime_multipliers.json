@@ -1,0 +1,16 @@
+{
+  "in_regime_trend_sharpe": {
+    "0": 1.539,
+    "1": 1.376,
+    "2": 0.572,
+    "3": -0.742
+  },
+  "multipliers": {
+    "0": 1.5,
+    "1": 1.5,
+    "2": 1.5,
+    "3": 0.0
+  },
+  "mapping_rule": "sharpe>=0.5 \u2192 1.5, sharpe>=0 \u2192 1.0, sharpe>=-0.5 \u2192 0.5, sharpe<-0.5 \u2192 0.0",
+  "note": "State 0 is the bull regime (highest mean SPY return) after the post-training sort_states_by_mean_return remap."
+}

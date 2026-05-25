@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -232,8 +233,12 @@ def run_all_backtests(ticker: str = "SPY") -> list[BacktestResult]:
 
     if labels_path.exists():
         labels = pl.read_parquet(labels_path)
-        # Heuristic multipliers — refine after inspecting state stats
-        mults = {0: 0.5, 1: 1.0, 2: 1.5, 3: 0.0}
+        # Data-driven multipliers from per-regime trend Sharpe.
+        # Falls back to conservative defaults if the multipliers file
+        # hasn't been derived yet.
+        from regime.backtest.regime_multipliers import load_multipliers
+
+        mults = load_multipliers()
         results.append(
             run_backtest(
                 "regime_conditioned_trend",
@@ -242,17 +247,35 @@ def run_all_backtests(ticker: str = "SPY") -> list[BacktestResult]:
                 regime_multipliers=mults,
             )
         )
-        results.append(
-            run_backtest(
-                "regime_conditioned_meanrev",
-                ticker,
-                regime_states=labels,
-                enabled_regimes={0, 1},
+        from regime.backtest.regime_multipliers import derive_meanrev_enabled_regimes
+
+        enabled = derive_meanrev_enabled_regimes()
+        if enabled:
+            results.append(
+                run_backtest(
+                    "regime_conditioned_meanrev",
+                    ticker,
+                    regime_states=labels,
+                    enabled_regimes=enabled,
+                )
             )
-        )
 
     # Persist a combined summary table for the Streamlit page
     out_path = settings.data_dir / "backtests" / "summary_latest.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps([r.summary.model_dump(mode="json") for r in results], indent=2))
+
+    # Also collate the per-strategy equity curves into a single parquet
+    # so the dashboard can render a chart without reading every run dir.
+    equity_dfs = []
+    for r in results:
+        eq_path = Path(r.equity_curve_path)
+        if eq_path.exists():
+            eq = pd.read_parquet(eq_path)
+            eq["strategy"] = r.summary.strategy
+            equity_dfs.append(eq[["strategy", "trade_date", "equity"]])
+    if equity_dfs:
+        combined = pd.concat(equity_dfs, ignore_index=True)
+        combined.to_parquet(settings.data_dir / "backtests" / "equity_latest.parquet")
+
     return results

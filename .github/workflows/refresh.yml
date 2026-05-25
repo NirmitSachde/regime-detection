@@ -1,0 +1,120 @@
+name: Nightly Pipeline Refresh
+
+# Runs the full real-data pipeline (ingest → dbt → train → multipliers → backtest)
+# nightly at 23:30 UTC (after US market close), commits the updated warehouse +
+# models back to main, which triggers Render to redeploy with fresh data.
+#
+# Requires repo secret: FRED_API_KEY
+
+on:
+  schedule:
+    - cron: "30 23 * * 1-5"   # weekdays at 23:30 UTC = ~7:30pm ET
+  workflow_dispatch:           # also runnable on-demand from the Actions tab
+
+permissions:
+  contents: write              # needs to commit the regenerated data files
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Allow the commit step to push back to main
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Sync deps
+        run: uv sync --all-extras
+
+      - name: Install libomp (for LightGBM on Linux)
+        run: sudo apt-get update && sudo apt-get install -y libgomp1
+
+      - name: Run full pipeline
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          DATA_DIR: ./data
+          DUCKDB_PATH: ./data/warehouse.duckdb
+          RAW_DIR: ./data/raw
+          MLFLOW_TRACKING_URI: file:./data/mlruns
+          UNIVERSE: "SPY,QQQ,IWM,DIA,XLK,XLF,XLE,XLY,XLP,XLV,XLI,XLU,XLB,XLRE,XLC"
+          HISTORY_START: "2018-01-01"
+        run: |
+          set -e
+          echo "::group::Ingest"
+          uv run regime-ingest all
+          echo "::endgroup::"
+
+          echo "::group::Warehouse bootstrap"
+          uv run python -c "from regime.warehouse import bootstrap; bootstrap()"
+          echo "::endgroup::"
+
+          echo "::group::dbt build"
+          cd dbt && uv run dbt deps --profiles-dir . || true
+          uv run dbt build --profiles-dir .
+          cd ..
+          echo "::endgroup::"
+
+          echo "::group::Train HMM + LightGBM"
+          uv run regime-train hmm
+          uv run regime-train lgbm    # uses saved best_params.json if present
+          echo "::endgroup::"
+
+          echo "::group::Derive regime multipliers"
+          uv run python -c "from regime.backtest.regime_multipliers import derive_and_save; derive_and_save()"
+          echo "::endgroup::"
+
+          echo "::group::Backtest"
+          uv run regime-backtest all
+          echo "::endgroup::"
+
+          echo "::group::Strip path-dependent views from warehouse"
+          uv run python scripts/clean_warehouse_for_shipping.py
+          echo "::endgroup::"
+
+          echo "::group::Regenerate proba.parquet files"
+          uv run python scripts/refresh_proba_files.py
+          echo "::endgroup::"
+
+      - name: Show resulting file sizes
+        run: |
+          ls -lh data/warehouse.duckdb data/models/hmm/*.parquet data/models/lgbm/*.parquet data/backtests/summary_latest.json data/models/regime_multipliers.json 2>&1 || true
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "regime-detection-bot"
+          git config user.email "regime-detection-bot@users.noreply.github.com"
+          git add data/warehouse.duckdb \
+                  data/models/hmm/labels.parquet \
+                  data/models/hmm/proba.parquet \
+                  data/models/hmm/fit.pkl \
+                  data/models/lgbm/model.txt \
+                  data/models/lgbm/metadata.json \
+                  data/models/lgbm/proba.parquet \
+                  data/models/lgbm/best_params.json \
+                  data/models/regime_multipliers.json \
+                  data/models/meanrev_regimes.json \
+                  data/backtests/summary_latest.json 2>/dev/null || true
+          # Only commit if anything actually changed
+          if git diff --staged --quiet; then
+            echo "No data changes — skipping commit"
+          else
+            today=$(date -u +'%Y-%m-%d')
+            git commit -m "Nightly refresh: pipeline run ${today}"
+            git push
+            echo "Pushed refreshed data; Render will auto-redeploy."
+          fi

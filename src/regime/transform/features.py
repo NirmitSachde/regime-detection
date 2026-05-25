@@ -56,7 +56,19 @@ def build_hmm_features(macro: pl.DataFrame) -> pl.DataFrame:
     lagged = lagged_macro_features(macro, lag_days=1)
     feat_cols = [
         c
-        for c in ("vix", "vix_chg_5d", "dxy_chg_5d", "yc_10y2y", "yc_chg_21d")
+        for c in (
+            # Volatility + macro stress
+            "vix",
+            "vix_chg_5d",
+            "dxy_chg_5d",
+            "yc_10y2y",
+            "yc_chg_21d",
+            # Return-direction features — let the HMM see whether
+            # high-vol regimes are bullish or bearish in direction
+            "spy_ret_21d",
+            "spy_ret_63d",
+            "spy_rv_21d",
+        )
         if c in lagged.columns
     ]
     return lagged.select(["feature_date", *feat_cols]).drop_nulls()

@@ -1,0 +1,15 @@
+{
+  "best_macro_f1": 0.5114672749630377,
+  "params": {
+    "learning_rate": 0.17158339896296093,
+    "num_leaves": 17,
+    "max_depth": 4,
+    "min_data_in_leaf": 81,
+    "feature_fraction": 0.9690634132749896,
+    "bagging_fraction": 0.5024486782064349,
+    "bagging_freq": 1,
+    "reg_alpha": 9.565488292076e-05,
+    "reg_lambda": 1.1630594926165366e-05,
+    "num_boost_round": 282
+  }
+}

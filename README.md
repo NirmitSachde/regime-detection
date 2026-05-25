@@ -4,15 +4,38 @@ End-to-end pipeline that classifies the current market regime each day and
 routes systematic trading strategies through regime-aware risk rules.
 Fully reproducible from a clean clone, runs locally, **free data only**.
 
-**Live dashboard:** <https://nirmitsachde.github.io/regime-detection/>
+| | |
+|---|---|
+| **Live dashboard** | <https://nirmitsachde.github.io/regime-detection/> |
+| **Live API** | <https://regime-detection-api.onrender.com/docs> (Swagger) |
+| **Code reference** | <https://nirmitsachde.github.io/regime-detection/reference/> |
+| **Source** | <https://github.com/NirmitSachde/regime-detection> |
 
 [![CI](https://github.com/NirmitSachde/regime-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/NirmitSachde/regime-detection/actions/workflows/ci.yml)
 [![Pages](https://github.com/NirmitSachde/regime-detection/actions/workflows/pages.yml/badge.svg)](https://github.com/NirmitSachde/regime-detection/actions/workflows/pages.yml)
+[![Nightly refresh](https://github.com/NirmitSachde/regime-detection/actions/workflows/refresh.yml/badge.svg)](https://github.com/NirmitSachde/regime-detection/actions/workflows/refresh.yml)
 [![python](https://img.shields.io/badge/python-3.12-blue)](pyproject.toml)
 [![ruff](https://img.shields.io/badge/lint-ruff-orange)](pyproject.toml)
 [![mypy](https://img.shields.io/badge/types-mypy_strict-blue)](pyproject.toml)
-[![tests](https://img.shields.io/badge/tests-79%20passing-brightgreen)](tests/)
+[![tests](https://img.shields.io/badge/tests-81%20passing-brightgreen)](tests/)
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/NirmitSachde/regime-detection)
+
+## Results — real backtest, 2018-01-02 to 2026-05-22 on SPY
+
+| Strategy | Sharpe | CAGR | Max DD | Calmar | Note |
+|---|---:|---:|---:|---:|---|
+| Buy & hold | 0.55 | +12.8% | -33.7% | 0.38 | passive benchmark |
+| Trend (50/200 MA, unconditional) | 0.51 | +7.0% | -35.7% | 0.19 | textbook trend rule |
+| **Trend + regime overlay** | **0.65** | **+10.4%** | **-26.9%** | **0.39** | data-driven multipliers |
+| Mean-rev (enabled in high-vol bear only) | 0.25 | +1.7% | -11.0% | 0.15 | small but positive |
+
+**Headline:** the regime overlay improves Sharpe by 27% and Calmar by 105% vs the
+unconditional trend rule. Max drawdown shrinks by 8.8 percentage points.
+
+The per-regime trend Sharpes that drive the multipliers are themselves the
+finding: the unconditional trend rule works in 3 out of 4 HMM states
+(Sharpe 1.54, 1.38, 0.57) and loses money in the 4th (Sharpe -0.74). Sizing
+1.5x in the first three and going flat in the fourth is the entire alpha.
 
 ## Stack
 

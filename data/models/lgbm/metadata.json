@@ -38,16 +38,17 @@
   "folds": [
     {
       "fold": 0,
-      "macro_f1": 1.0,
+      "macro_f1": 0.9193235864012683,
       "train_size": 1835,
       "val_size": 1832,
       "classes_seen": [
-        1
+        0,
+        2
       ]
     },
     {
       "fold": 1,
-      "macro_f1": 0.11512605042016806,
+      "macro_f1": 0.22275896174072468,
       "train_size": 3667,
       "val_size": 1832,
       "classes_seen": [
@@ -59,37 +60,37 @@
     },
     {
       "fold": 2,
-      "macro_f1": 0.597184592857218,
+      "macro_f1": 0.47440331096283267,
       "train_size": 5499,
       "val_size": 1832,
       "classes_seen": [
         0,
+        1,
         2,
         3
       ]
     },
     {
       "fold": 3,
-      "macro_f1": 0.30405815038448264,
+      "macro_f1": 0.536560739238224,
       "train_size": 7331,
       "val_size": 1832,
       "classes_seen": [
         0,
-        2,
-        3
+        1
       ]
     },
     {
       "fold": 4,
-      "macro_f1": 0.5336603755764733,
+      "macro_f1": 0.4042897764721391,
       "train_size": 9163,
       "val_size": 1832,
       "classes_seen": [
         0,
-        2,
-        3
+        1,
+        2
       ]
     }
   ],
-  "overall_macro_f1": 0.5100058338476684
+  "overall_macro_f1": 0.5114672749630377
 }

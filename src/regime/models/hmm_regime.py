@@ -93,6 +93,73 @@ def predict_state_proba(fit: HMMFitResult, features: pl.DataFrame) -> np.ndarray
     return np.asarray(fit.model.predict_proba(x), dtype=np.float64)
 
 
+def sort_states_by_mean_return(
+    fit: HMMFitResult,
+    features: pl.DataFrame,
+    spy_returns: pl.Series,
+) -> tuple[HMMFitResult, dict[int, int]]:
+    """Remap HMM state indices so state 0 = highest-mean-return ("Bull"),
+    state K-1 = lowest-mean-return ("Bear"). Returns the remapped fit and
+    the {old_state: new_state} dictionary.
+
+    HMMs assign state indices arbitrarily; without this, "state 0" might be
+    bear in one training run and bull in the next. Sorting by mean SPY return
+    gives a stable, interpretable label ordering that matches human intuition
+    (bull = positive returns, bear = negative).
+    """
+    states = predict_states(fit, features)
+    if len(states) != len(spy_returns):
+        # Mismatched lengths: skip remapping rather than error
+        return fit, {i: i for i in range(fit.n_states)}
+
+    ret_arr = np.array([float(r) if r is not None else 0.0 for r in spy_returns])
+    # Mean return per state (ignore NaN, missing → 0)
+    mean_by_state: dict[int, float] = {}
+    for s in range(fit.n_states):
+        mask = states == s
+        if mask.any():
+            mean_by_state[s] = float(np.nanmean(ret_arr[mask]))
+        else:
+            mean_by_state[s] = 0.0
+
+    # Sort old states by descending mean return → new index 0 = bull, K-1 = bear
+    old_order = sorted(mean_by_state.keys(), key=lambda s: mean_by_state[s], reverse=True)
+    remap = {old: new for new, old in enumerate(old_order)}
+
+    # Remap by permuting the model's internal parameters
+    perm = np.array(old_order)
+    new_model = GaussianHMM(
+        n_components=fit.n_states,
+        covariance_type="diag",
+        n_iter=fit.model.n_iter,
+        random_state=fit.model.random_state,
+        tol=fit.model.tol,
+    )
+    # Copy-permute fitted parameters
+    new_model.startprob_ = fit.model.startprob_[perm]
+    new_model.transmat_ = fit.model.transmat_[perm][:, perm]
+    new_model.means_ = fit.model.means_[perm]
+    new_model.covars_ = (
+        fit.model._covars_[perm] if hasattr(fit.model, "_covars_") else fit.model.covars_[perm]
+    )
+    new_model.n_features = fit.model.n_features
+
+    new_fit = HMMFitResult(
+        model=new_model,
+        scaler=fit.scaler,
+        feature_columns=fit.feature_columns,
+        n_states=fit.n_states,
+        bic=fit.bic,
+        log_likelihood=fit.log_likelihood,
+    )
+    log.info(
+        "hmm.states_sorted_by_return",
+        remap={int(k): int(v) for k, v in remap.items()},
+        mean_returns={int(k): round(v, 5) for k, v in mean_by_state.items()},
+    )
+    return new_fit, remap
+
+
 def summarize_states(
     fit: HMMFitResult,
     features: pl.DataFrame,

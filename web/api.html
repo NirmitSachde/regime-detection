@@ -107,6 +107,7 @@
       {path: "/regime/implications/latest", desc: "PM-facing allocation guidance for today."},
       {path: "/regime/implications/{date}", desc: "Allocation guidance for a specific date.", paramKey: "date", paramDefault: window.SAMPLE_DATA ? window.SAMPLE_DATA.dates[window.SAMPLE_DATA.dates.length - 1] : "2024-12-30"},
       {path: "/backtest/summary", desc: "Risk-adjusted stats for all three strategies."},
+      {path: "/backtest/equity", desc: "Per-strategy equity curves (weekly resolution)."},
     ];
 
     const apiBase = ((window.SITE_CONFIG && window.SITE_CONFIG.API_BASE) || "").replace(/\/+$/, "");

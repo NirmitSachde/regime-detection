@@ -147,11 +147,23 @@
       }
     }
 
+    let LIVE_EQUITY = null;   // populated by /backtest/equity if available
+
     async function init() {
       const d = await APIClient.call("/backtest/summary");
       showStatus(d);
       renderHeadline(d);
       renderTable(d);
+
+      // Try to pull real equity curves from the API; renderEquity decides
+      // whether to use these or fall back to baked sample series.
+      try {
+        const eq = await APIClient.call("/backtest/equity");
+        if (eq && eq.strategies && eq.strategies.length > 0) {
+          LIVE_EQUITY = eq;
+        }
+      } catch (e) { /* silent fall-back to sample */ }
+
       renderEquity();
       wireToggle();
 
@@ -163,13 +175,23 @@
     }
 
     function renderHeadline(d) {
-      const regime = d.strategies.find((s) => s.name === "regime_conditioned");
-      const trend  = d.strategies.find((s) => s.name === "baseline_trend");
-      const improvement = d.sharpe_improvement;
+      // Accept either the original synthetic names or the real-data names
+      // (regime_conditioned_trend, baseline_trend) — match either.
+      const regime = d.strategies.find((s) =>
+        s.name === "regime_conditioned" || s.name === "regime_conditioned_trend"
+      );
+      const trend = d.strategies.find((s) => s.name === "baseline_trend");
+      if (!regime || !trend) {
+        document.getElementById("headline").textContent =
+          "Run `make real-data` to populate backtest results.";
+        return;
+      }
       const ddDelta = Math.abs(trend.max_dd_pct) - Math.abs(regime.max_dd_pct);
+      const sharpeUp = (regime.sharpe / trend.sharpe).toFixed(2);
       document.getElementById("headline").innerHTML = `
-        The regime overlay raises trend's Sharpe by
-        <strong style="color:var(--positive);">${improvement}×</strong>
+        The regime overlay raises trend's Sharpe to
+        <strong style="color:var(--positive);">${regime.sharpe.toFixed(2)}</strong>
+        (from ${trend.sharpe.toFixed(2)}, a ${sharpeUp}× lift)
         and cuts max drawdown by
         <strong style="color:var(--positive);">${ddDelta.toFixed(0)} percentage points</strong>
         — from ${trend.max_dd_pct.toFixed(0)}% to ${regime.max_dd_pct.toFixed(0)}%.
@@ -196,6 +218,11 @@
     }
 
     function renderEquity(strat = "all") {
+      // Prefer real backtest curves when /backtest/equity returned data
+      if (LIVE_EQUITY && LIVE_EQUITY.strategies.length) {
+        renderEquityLive(LIVE_EQUITY, strat);
+        return;
+      }
       const d = window.SAMPLE_DATA;
       if (!d) return;
       const traces = [];
@@ -226,6 +253,63 @@
         });
       }
 
+      const layout = {
+        paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+        font: {family: "Inter", color: C.text_2, size: 11.5},
+        margin: {l: 64, r: 28, t: 24, b: 44}, height: 420,
+        xaxis: {gridcolor: C.border, linecolor: C.border_2,
+                tickfont: {color: C.muted, family: "JetBrains Mono", size: 10.5}},
+        yaxis: {gridcolor: C.border, linecolor: C.border_2, tickprefix: "$", tickformat: ",.0f",
+                tickfont: {color: C.muted, family: "JetBrains Mono", size: 10.5}},
+        legend: {orientation: "h", yanchor: "bottom", y: 1.02, xanchor: "right", x: 1,
+                 font: {color: C.muted, size: 10.5, family: "JetBrains Mono"}},
+        hoverlabel: {bgcolor: C.surface, bordercolor: C.border_2,
+                     font: {color: C.text, family: "JetBrains Mono", size: 11.5}},
+        hovermode: "x unified",
+      };
+      Plotly.react("chart-equity", traces, layout, {displayModeBar: false, responsive: true});
+    }
+
+    function renderEquityLive(eq, strat) {
+      // Map of strategy names to display config
+      const CONFIG = {
+        "baseline_trend": {
+          show: ["all", "compare"],
+          name: "trend (unconditional)",
+          color: C.negative,
+          width: 1.6,
+        },
+        "regime_conditioned_trend": {
+          show: ["all", "compare", "regime"],
+          name: "trend + regime overlay",
+          color: C.positive,
+          width: 2,
+        },
+        "regime_conditioned_meanrev": {
+          show: [],   // hide from the main equity plot; it's a different strategy
+          name: "regime mean-rev",
+          color: C.muted,
+          width: 1.2,
+          dash: "dot",
+        },
+      };
+      const traces = [];
+      for (const s of eq.strategies) {
+        const cfg = CONFIG[s.name];
+        if (!cfg || !cfg.show.includes(strat)) continue;
+        traces.push({
+          x: s.points.map((p) => p.date),
+          y: s.points.map((p) => p.equity),
+          type: "scatter",
+          mode: "lines",
+          name: cfg.name,
+          line: {color: cfg.color, width: cfg.width, dash: cfg.dash},
+          fill: strat === "regime" && s.name === "regime_conditioned_trend" ? "tozeroy" : undefined,
+          fillcolor: strat === "regime" && s.name === "regime_conditioned_trend"
+            ? "rgba(74,157,110,0.06)" : undefined,
+          hovertemplate: `%{x|%b %Y} · $%{y:,.0f}<extra>${cfg.name}</extra>`,
+        });
+      }
       const layout = {
         paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
         font: {family: "Inter", color: C.text_2, size: 11.5},

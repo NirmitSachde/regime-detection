@@ -16,9 +16,14 @@ from regime.models.hmm_regime import (
     HMMFitResult,
     fit_hmm,
     predict_states,
+    sort_states_by_mean_return,
     summarize_states,
 )
-from regime.models.lightgbm_regime import LGBMFitResult, walk_forward_train
+from regime.models.lightgbm_regime import (
+    LGBMFitResult,
+    tune_hyperparameters,
+    walk_forward_train,
+)
 from regime.models.registry import log_dict, register_model, start_run
 from regime.transform.features import build_hmm_features, build_supervised_features
 from regime.transform.targets import join_labels_onto_features, label_from_hmm_states
@@ -62,6 +67,15 @@ def hmm() -> HMMFitResult:
 
     with start_run("hmm-fit", tags={"phase": "5"}):
         fit = fit_hmm(feats, n_states_candidates=(3, 4))
+
+        # Sort states deterministically: state 0 = highest mean SPY return
+        # (bull), state K-1 = lowest (bear). Removes the arbitrary state
+        # indexing the EM algorithm produces and makes labels stable across
+        # training runs.
+        if "spy_ret_21d" in feats.columns:
+            fit, remap = sort_states_by_mean_return(fit, feats, feats["spy_ret_21d"])
+            log.info("hmm.state_remap", remap={int(k): int(v) for k, v in remap.items()})
+
         log_dict(
             metrics={
                 "bic": fit.bic,
@@ -106,8 +120,16 @@ def hmm() -> HMMFitResult:
 
 
 @app.command()
-def lgbm() -> LGBMFitResult:
-    """Train LightGBM classifier with walk-forward CV; log all folds to MLflow."""
+def lgbm(
+    tune: bool = typer.Option(False, help="Run Optuna hyperparameter search before training"),
+    n_trials: int = typer.Option(50, help="Number of Optuna trials when --tune"),
+) -> LGBMFitResult:
+    """Train LightGBM classifier with walk-forward CV; log all folds to MLflow.
+
+    Pass --tune to run an Optuna hyperparameter search first (TPE sampler,
+    walk-forward macro-F1 objective). Best params are saved to
+    data/models/lgbm/best_params.json and used for the final fit.
+    """
     settings = get_settings()
     mart = _load_mart()
     feats = build_supervised_features(mart)
@@ -123,8 +145,61 @@ def lgbm() -> LGBMFitResult:
     key_cols = {"ticker", "trade_date", "regime_state"}
     feat_cols = [c for c in joined.columns if c not in key_cols and joined[c].dtype.is_numeric()]
 
-    with start_run("lgbm-fit", tags={"phase": "5"}):
-        fit = walk_forward_train(joined, feat_cols, label_col="regime_state", n_splits=5)
+    best_params: dict[str, object] | None = None
+    out_dir_early = settings.data_dir / "models" / "lgbm"
+    out_dir_early.mkdir(parents=True, exist_ok=True)
+    best_params_path = out_dir_early / "best_params.json"
+
+    if tune:
+        log.info("lgbm.tune.start", n_trials=n_trials)
+        best = tune_hyperparameters(joined, feat_cols, n_trials=n_trials, n_splits=5)
+        best_macro_f1 = float(best.pop("best_macro_f1"))  # type: ignore[arg-type]
+        best_params = best
+        # Persist the best params for reproducibility + future re-runs
+        best_params_path.write_text(
+            json.dumps(
+                {"best_macro_f1": best_macro_f1, "params": best_params},
+                indent=2,
+            )
+        )
+        log.info("lgbm.tune.complete", best_macro_f1=round(best_macro_f1, 4))
+    elif best_params_path.exists():
+        # Re-use the previous best_params if available, so subsequent
+        # untuned runs benefit from prior search work.
+        prev = json.loads(best_params_path.read_text())
+        best_params = prev.get("params")
+        log.info(
+            "lgbm.reuse_best_params",
+            path=str(best_params_path),
+            best_macro_f1=prev.get("best_macro_f1"),
+        )
+
+    # Build the params dict for walk_forward_train
+    n_class = len({int(c) for c in joined["regime_state"].drop_nulls()})
+    train_params: dict[str, object] | None
+    if best_params:
+        num_boost_round = int(best_params.pop("num_boost_round", 400))  # type: ignore[call-overload]
+        train_params = {
+            "objective": "multiclass",
+            "num_class": n_class,
+            "metric": "multi_logloss",
+            "verbosity": -1,
+            "seed": settings.random_seed,
+            **best_params,
+        }
+    else:
+        num_boost_round = 400
+        train_params = None  # walk_forward_train will use its defaults
+
+    with start_run("lgbm-fit", tags={"phase": "5", "tuned": str(tune)}):
+        fit = walk_forward_train(
+            joined,
+            feat_cols,
+            label_col="regime_state",
+            n_splits=5,
+            params=train_params,
+            num_boost_round=num_boost_round,
+        )
         log_dict(
             metrics={
                 "overall_macro_f1": fit.overall_macro_f1,

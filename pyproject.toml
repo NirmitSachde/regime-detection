@@ -27,6 +27,7 @@ dependencies = [
   "hmmlearn>=0.3.2",
   "lightgbm>=4.5",
   "shap>=0.46",
+  "optuna>=4.0",
   # Tracking
   "mlflow>=2.18",
   # Backtest
@@ -112,6 +113,8 @@ ignore = [
   "TC006",       # cast string literal
   "UP037",       # string annotations — noisy when mixed with forward refs
   "RUF001",     # ambiguous unicode chars (× is intentional in stats labels)
+  "RUF002",     # ambiguous unicode in docstrings (σ, × intentional)
+  "RUF003",     # ambiguous unicode in comments
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -141,6 +144,7 @@ module = [
   "fredapi.*",
   "hmmlearn.*",
   "lightgbm.*",
+  "optuna.*",
   "vectorbt.*",
   "mlflow.*",
   "shap.*",
@@ -198,6 +202,7 @@ omit = [
   # Full-pipeline-dependent
   "src/regime/monitoring/drift.py",
   "src/regime/backtest/engine.py",
+  "src/regime/backtest/regime_multipliers.py",
   # Small helper covered by integration tests
   "src/regime/transform/targets.py",
   # Top-level CLI dispatcher

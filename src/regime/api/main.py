@@ -160,6 +160,22 @@ class BacktestSummary(BaseModel):
     data_source: str
 
 
+class EquityPoint(BaseModel):
+    date: str
+    equity: float
+
+
+class EquityCurve(BaseModel):
+    name: str
+    points: list[EquityPoint]
+
+
+class EquityCurvesResponse(BaseModel):
+    strategies: list[EquityCurve]
+    data_source: str
+    note: str | None = None
+
+
 class RegimeStateCount(BaseModel):
     state: int
     label: str
@@ -250,6 +266,7 @@ def index() -> APIIndex:
             "GET /regime/implications/latest": "PM-facing allocation guidance",
             "GET /regime/implications/{date}": "Allocation guidance for a specific date",
             "GET /backtest/summary": "Risk-adjusted stats for all three strategies",
+            "GET /backtest/equity": "Per-strategy equity curves (downsampled weekly)",
         },
     )
 
@@ -394,6 +411,33 @@ def implications_for_day(day: date) -> RegimeImplications:
             detail=f"No regime classification available for {day.isoformat()}",
         )
     return payload
+
+
+@app.get("/backtest/equity", response_model=EquityCurvesResponse, tags=["backtest"])
+def backtest_equity() -> EquityCurvesResponse:
+    """Per-strategy equity curves (downsampled weekly) for chart rendering."""
+    src = _current_data_source()
+    if src == "warehouse":
+        try:
+            data = live.equity_curves()
+            return EquityCurvesResponse(
+                strategies=[
+                    EquityCurve(name=s["name"], points=[EquityPoint(**p) for p in s["points"]])
+                    for s in data["strategies"]
+                ],
+                data_source="warehouse",
+            )
+        except FileNotFoundError:
+            pass
+    # Synthetic: build curves from sample_data.js-style numbers
+    return EquityCurvesResponse(
+        strategies=[],
+        data_source="synthetic",
+        note=(
+            "No equity_latest.parquet on the server. Run `make real-data` and "
+            "rebuild the image, or use the dashboard's baked-in sample equity series."
+        ),
+    )
 
 
 @app.get("/backtest/summary", response_model=BacktestSummary, tags=["backtest"])

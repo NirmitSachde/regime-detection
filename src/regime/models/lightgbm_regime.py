@@ -124,6 +124,82 @@ def walk_forward_train(
     )
 
 
+def tune_hyperparameters(
+    df: pl.DataFrame,
+    feature_cols: list[str],
+    label_col: str = "regime_state",
+    n_trials: int = 50,
+    n_splits: int = 5,
+) -> dict[str, object]:
+    """Optuna search over LightGBM hyperparameters with walk-forward CV.
+
+    Objective: maximise mean macro-F1 across folds (same metric used in
+    walk_forward_train). Returns the best param dict ready to feed back
+    into walk_forward_train(params=...).
+    """
+    import optuna
+
+    settings = get_settings()
+    df = df.sort(["trade_date", "ticker"])
+    x, y = _to_xy(df, feature_cols, label_col)
+    if x.shape[0] == 0:
+        raise ValueError("no rows after dropna; check feature/label columns")
+    n_class = len({int(c) for c in np.unique(y)})
+
+    def objective(trial: "optuna.Trial") -> float:
+        params = {
+            "objective": "multiclass",
+            "num_class": n_class,
+            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.2, log=True),
+            "num_leaves": trial.suggest_int("num_leaves", 8, 127),
+            "max_depth": trial.suggest_int("max_depth", 3, 12),
+            "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 5, 100),
+            "feature_fraction": trial.suggest_float("feature_fraction", 0.5, 1.0),
+            "bagging_fraction": trial.suggest_float("bagging_fraction", 0.5, 1.0),
+            "bagging_freq": trial.suggest_int("bagging_freq", 1, 10),
+            "reg_alpha": trial.suggest_float("reg_alpha", 1e-8, 1.0, log=True),
+            "reg_lambda": trial.suggest_float("reg_lambda", 1e-8, 1.0, log=True),
+            "metric": "multi_logloss",
+            "verbosity": -1,
+            "seed": settings.random_seed,
+        }
+        n_rounds = trial.suggest_int("num_boost_round", 100, 500)
+
+        from sklearn.model_selection import TimeSeriesSplit
+
+        tss = TimeSeriesSplit(n_splits=n_splits)
+        scores = []
+        for tr, va in tss.split(x):
+            dtr = lgb.Dataset(x[tr], label=y[tr])
+            dva = lgb.Dataset(x[va], label=y[va], reference=dtr)
+            booster = lgb.train(
+                params,
+                dtr,
+                num_boost_round=n_rounds,
+                valid_sets=[dva],
+                callbacks=[lgb.early_stopping(20, verbose=False)],
+            )
+            pred = np.asarray(booster.predict(x[va])).argmax(axis=1)
+            scores.append(float(f1_score(y[va], pred, average="macro", zero_division=0)))
+        return float(np.mean(scores))
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    study = optuna.create_study(
+        direction="maximize",
+        sampler=optuna.samplers.TPESampler(seed=settings.random_seed),
+    )
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
+
+    best = dict(study.best_params)
+    log.info(
+        "lgbm.tune.done",
+        n_trials=n_trials,
+        best_macro_f1=round(study.best_value, 4),
+        best_params=best,
+    )
+    return {**best, "best_macro_f1": study.best_value}
+
+
 def predict_proba(fit: LGBMFitResult, df: pl.DataFrame) -> np.ndarray:
     x = df.select(list(fit.feature_columns)).to_numpy().astype(np.float32)
     return np.asarray(fit.booster.predict(x), dtype=np.float64)

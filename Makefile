@@ -78,12 +78,20 @@ docs-serve: docs  ## Build and serve docs locally
 # Real-data pipeline → bake into Docker image → push to Render
 # ---------------------------------------------------------------------
 
-real-data: ingest dbt-build train backtest clean-warehouse-views  ## End-to-end: ingest + warehouse + train + backtest + strip path-dependent views
+real-data: ingest dbt-build train regime-multipliers backtest clean-warehouse-views  ## End-to-end: ingest + warehouse + train + multipliers + backtest + strip views
 	@echo
 	@echo "Pipeline complete. Verify what landed:"
 	@ls -lh data/warehouse.duckdb 2>/dev/null && \
 	  ls -lh data/models/hmm/labels.parquet 2>/dev/null && \
+	  ls -lh data/models/regime_multipliers.json 2>/dev/null && \
 	  echo "Ready to bake — run: make api-image"
+
+regime-multipliers:  ## Derive per-regime trend-Sharpe multipliers from history
+	$(UV) run python -c "from regime.backtest.regime_multipliers import derive_and_save; derive_and_save()"
+
+train-tuned:  ## HMM + Optuna-tuned LightGBM (~5 min for 50 trials)
+	$(UV) run regime-train hmm
+	$(UV) run regime-train lgbm --tune --n-trials 50
 
 clean-warehouse-views:  ## Strip path-dependent views from the warehouse (required before shipping)
 	$(UV) run python scripts/clean_warehouse_for_shipping.py

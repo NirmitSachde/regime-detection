@@ -303,6 +303,32 @@ def regime_distribution() -> dict[str, Any]:
     }
 
 
+def equity_curves() -> dict[str, Any]:
+    """Read the combined equity_latest.parquet into per-strategy time series.
+
+    Returns {"strategies": [{"name": str, "points": [{"date": str, "equity": float}, ...]}]}.
+    """
+    import polars as pl
+
+    settings = get_settings()
+    path = settings.data_dir / "backtests" / "equity_latest.parquet"
+    if not path.exists():
+        raise FileNotFoundError(path)
+    df = pl.read_parquet(path)
+    out: dict[str, list[dict[str, Any]]] = {}
+    # Down-sample to ~weekly to keep payload manageable in the browser
+    for r in df.iter_rows(named=True):
+        out.setdefault(r["strategy"], []).append(
+            {"date": str(r["trade_date"]), "equity": float(r["equity"])}
+        )
+    strategies = []
+    for name, pts in out.items():
+        # Take every 5th point (weekly cadence)
+        thinned = pts[::5] + ([pts[-1]] if pts and pts[-1] != pts[::5][-1] else [])
+        strategies.append({"name": name, "points": thinned})
+    return {"strategies": strategies}
+
+
 def backtest_summary() -> dict[str, Any]:
     """Read the latest summary_latest.json written by `regime-backtest all`."""
     settings = get_settings()
