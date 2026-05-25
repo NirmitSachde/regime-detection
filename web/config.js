@@ -8,10 +8,12 @@
  * No build step. Edit, refresh, deploy.
  */
 window.SITE_CONFIG = {
-  // Set this to your deployed FastAPI base URL once you click the "Deploy to Render"
-  // button in the README (e.g. "https://regime-detection-api.onrender.com").
-  // When empty, the dashboard pages render baked-in sample data with a banner.
-  API_BASE:   "",
+  // Deployed FastAPI base URL. When empty, the dashboard pages render
+  // baked-in sample data with a banner. Render free tier sleeps after
+  // 15 min idle — first request after sleep can take ~50s. The dashboard
+  // gracefully falls back to sample data on timeout, then auto-recovers
+  // once the API wakes up.
+  API_BASE:   "https://regime-detection-api.onrender.com",
 
   GITHUB_URL: "https://github.com/NirmitSachde/regime-detection",
 };

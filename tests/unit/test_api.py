@@ -9,6 +9,15 @@ from regime.api.main import app
 client = TestClient(app)
 
 
+def test_index_lists_endpoints() -> None:
+    r = client.get("/")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["name"] == "regime-detection API"
+    assert "/regime/latest" in " ".join(body["endpoints"].keys())
+    assert body["docs"]["swagger"] == "/docs"
+
+
 def test_health() -> None:
     r = client.get("/health")
     assert r.status_code == 200

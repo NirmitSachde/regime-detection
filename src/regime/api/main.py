@@ -45,10 +45,13 @@ app = FastAPI(
 )
 
 # CORS — the static landing site is on a different origin (GH Pages).
-# Lock this down to your actual Pages URL once you have one.
+# Allow the Pages site explicitly + wildcard so curl + other origins still work.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://nirmitsachde.github.io",
+        "*",
+    ],
     allow_credentials=False,
     allow_methods=["GET", "OPTIONS"],
     allow_headers=["*"],
@@ -117,7 +120,47 @@ class RegimeDistribution(BaseModel):
     states: list[RegimeStateCount]
 
 
+class APIIndex(BaseModel):
+    name: str
+    version: str
+    description: str
+    docs: dict[str, str]
+    endpoints: dict[str, str]
+
+
 # ---------- Routes ----------
+
+
+@app.get("/", response_model=APIIndex, tags=["meta"])
+def index() -> APIIndex:
+    """Friendly landing payload — list of available endpoints + doc links.
+
+    FastAPI returns 404 at `/` by default. This handler exists so that
+    anyone curling the base URL gets something useful instead of an error.
+    """
+    return APIIndex(
+        name="regime-detection API",
+        version=__version__,
+        description=(
+            "Read-only API for the adaptive market-regime detection pipeline. "
+            "Open /docs for interactive Swagger, /redoc for ReDoc."
+        ),
+        docs={
+            "swagger": "/docs",
+            "redoc": "/redoc",
+            "openapi": "/openapi.json",
+        },
+        endpoints={
+            "GET /health": "Liveness probe",
+            "GET /regime/latest": "Most recent regime classification + probabilities",
+            "GET /regime/{date}": "Regime for a specific YYYY-MM-DD",
+            "GET /regime/history": "Time-series of classifications (?start=&end=&limit=)",
+            "GET /regime/distribution": "How many days spent in each regime",
+            "GET /regime/implications/latest": "PM-facing allocation guidance",
+            "GET /regime/implications/{date}": "Allocation guidance for a specific date",
+            "GET /backtest/summary": "Risk-adjusted stats for all three strategies",
+        },
+    )
 
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])
