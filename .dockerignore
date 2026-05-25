@@ -26,7 +26,9 @@ dbt/
 # not the raw zone. data/warehouse.duckdb + data/models/ are KEPT.
 data/raw/
 data/mlruns/
+# Per-run backtest output dirs (timestamped) — but we DO ship summary_latest.json
 data/backtests/*/
+!data/backtests/summary_latest.json
 mlartifacts/
 mlruns/
 
