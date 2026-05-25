@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API — regime-detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a0a0a' stroke='%23232323' stroke-width='2'/%3E%3Cpath d='M12 44L24 30L34 38L52 18' stroke='%23d4a017' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="nav-brand" style="text-decoration:none;color:inherit;border:none;">
+        <span class="logo-mark">RD</span>
+        <span>regime-detection</span>
+      </a>
+      <div class="nav-links">
+        <a data-page="index.html" href="index.html">Home</a>
+        <a data-page="regime.html" href="regime.html">Live Regime</a>
+        <a data-page="implications.html" href="implications.html">Implications</a>
+        <a data-page="backtest.html" href="backtest.html">Backtest</a>
+        <a data-page="api.html" href="api.html">API</a>
+        <a id="nav-api-docs" href="#" target="_blank" rel="noopener">Swagger</a>
+      </div>
+      <span class="live-dot" id="live-indicator" data-mode="loading">
+        <span class="blip"></span><span class="text">loading...</span>
+      </span>
+    </div>
+  </nav>
+
+  <header class="page-hero">
+    <div class="container">
+      <div class="eyebrow">04 / API</div>
+      <h1>The endpoints behind every page.</h1>
+      <p class="lede">A read-only REST API. Every panel on this site is one of these calls — try them yourself. Interactive OpenAPI / Swagger documentation lives at <code style="font-family:var(--font-mono);font-size:13px;background:var(--surface);padding:2px 8px;border-radius:3px;color:var(--text);border:1px solid var(--border-2);"><span id="api-base-label">/docs</span></code>.</p>
+    </div>
+  </header>
+
+  <main class="container" style="padding-bottom: 60px;">
+    <div id="status-banner-slot"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><strong>Base URL</strong></div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:14px;color:var(--text);">
+        <span id="api-base">(not configured)</span>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-top:8px;">
+        Set <code style="background:var(--bg-1);padding:1px 6px;border-radius:3px;color:var(--text-2);border:1px solid var(--border-2);">API_BASE</code>
+        in <code style="background:var(--bg-1);padding:1px 6px;border-radius:3px;color:var(--text-2);border:1px solid var(--border-2);">config.js</code>
+        to point at your deployed FastAPI service.
+      </div>
+    </div>
+
+    <div id="endpoints"></div>
+
+    <div class="panel" style="margin-top: 24px;">
+      <div class="panel-head">
+        <div class="panel-title"><strong>Interactive docs</strong></div>
+      </div>
+      <p style="margin:0;color:var(--muted);font-size:14px;line-height:1.65;">
+        FastAPI generates two doc UIs from the OpenAPI schema:
+      </p>
+      <div style="display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;">
+        <a id="link-swagger" class="btn btn-ghost" href="#" target="_blank" rel="noopener">Open Swagger UI</a>
+        <a id="link-redoc" class="btn btn-ghost" href="#" target="_blank" rel="noopener">Open ReDoc</a>
+        <a id="link-openapi" class="btn btn-ghost" href="#" target="_blank" rel="noopener">Raw OpenAPI JSON</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a id="footer-github" href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+        <a id="footer-api" href="#" target="_blank" rel="noopener">API</a>
+        <a id="footer-api-docs" href="#" target="_blank" rel="noopener">Swagger</a>
+        <a id="footer-ref" href="reference/" target="_blank" rel="noopener">Code reference</a>
+        <a href="mailto:sachde.n@northeastern.edu">Email</a>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 Nirmit Sachde &middot; MIT licensed</span>
+        <span>regime-detection v0.1.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="sample_data.js"></script>
+  <script src="api-client.js"></script>
+  <script src="nav.js"></script>
+
+  <script>
+  (function () {
+    const ENDPOINTS = [
+      {path: "/health", desc: "Liveness probe."},
+      {path: "/regime/latest", desc: "Most-recent regime classification + probability vector."},
+      {path: "/regime/{date}", desc: "Regime for a specific date.", paramKey: "date", paramDefault: window.SAMPLE_DATA ? window.SAMPLE_DATA.dates[window.SAMPLE_DATA.dates.length - 1] : "2024-12-30"},
+      {path: "/regime/history", desc: "Time-series of classifications. Query: ?start=&end=&limit=", paramKey: "limit", paramDefault: "30", paramAsQuery: true},
+      {path: "/regime/distribution", desc: "How many days spent in each regime in the served window."},
+      {path: "/regime/implications/latest", desc: "PM-facing allocation guidance for today."},
+      {path: "/regime/implications/{date}", desc: "Allocation guidance for a specific date.", paramKey: "date", paramDefault: window.SAMPLE_DATA ? window.SAMPLE_DATA.dates[window.SAMPLE_DATA.dates.length - 1] : "2024-12-30"},
+      {path: "/backtest/summary", desc: "Risk-adjusted stats for all three strategies."},
+    ];
+
+    const apiBase = ((window.SITE_CONFIG && window.SITE_CONFIG.API_BASE) || "").replace(/\/+$/, "");
+
+    function showStatus(source) {
+      const slot = document.getElementById("status-banner-slot");
+      if (!apiBase) {
+        slot.innerHTML = `
+          <div class="status-banner sample">
+            <strong>No API configured.</strong> Endpoints will respond from baked-in sample
+            data. Edit <code>web/config.js</code>, set <code>API_BASE</code> to your
+            deployed FastAPI URL, then redeploy. The page detects it automatically.
+          </div>`;
+      }
+    }
+
+    function init() {
+      showStatus();
+      const baseEl = document.getElementById("api-base");
+      const baseLabel = document.getElementById("api-base-label");
+      baseEl.textContent = apiBase || "(none — using sample data)";
+      baseLabel.textContent = apiBase ? `${apiBase}/docs` : "/docs";
+
+      ["link-swagger", "link-redoc", "link-openapi"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!apiBase) { el.style.opacity = "0.5"; el.style.pointerEvents = "none"; return; }
+        el.href = apiBase + ({"link-swagger": "/docs", "link-redoc": "/redoc", "link-openapi": "/openapi.json"})[id];
+      });
+
+      const list = document.getElementById("endpoints");
+      ENDPOINTS.forEach((ep) => list.appendChild(renderEndpoint(ep)));
+    }
+
+    function renderEndpoint(ep) {
+      const el = document.createElement("div");
+      el.className = "endpoint";
+      const inputHtml = ep.paramKey
+        ? `<input data-key="${ep.paramKey}" value="${ep.paramDefault || ''}" placeholder="${ep.paramKey}" />`
+        : "";
+      el.innerHTML = `
+        <div class="endpoint-head">
+          <span class="method">GET</span>
+          <span class="path">${ep.path}</span>
+          <span class="desc">${ep.desc}</span>
+        </div>
+        <div class="endpoint-body">
+          <div class="endpoint-actions">
+            ${inputHtml}
+            <button class="btn-run">Run</button>
+          </div>
+          <div class="endpoint-curl-label">cURL</div>
+          <div class="endpoint-curl"></div>
+          <div class="endpoint-response-label">Response</div>
+          <div class="endpoint-response"><span style="color:var(--dim);">— click Run —</span></div>
+        </div>
+      `;
+
+      const head = el.querySelector(".endpoint-head");
+      head.addEventListener("click", (e) => {
+        if (e.target.closest(".endpoint-actions")) return;
+        el.classList.toggle("open");
+        updateCurl();
+      });
+
+      const runBtn = el.querySelector(".btn-run");
+      runBtn.addEventListener("click", (e) => { e.stopPropagation(); run(); });
+
+      const input = el.querySelector("input");
+      if (input) input.addEventListener("input", updateCurl);
+
+      function buildPath() {
+        let path = ep.path;
+        if (ep.paramKey && !ep.paramAsQuery) {
+          const v = input?.value || ep.paramDefault || "";
+          path = path.replace("{" + ep.paramKey + "}", encodeURIComponent(v));
+        } else if (ep.paramAsQuery) {
+          const v = input?.value || ep.paramDefault || "";
+          path += "?" + ep.paramKey + "=" + encodeURIComponent(v);
+        }
+        return path;
+      }
+
+      function updateCurl() {
+        const path = buildPath();
+        const url = (apiBase || "https://<your-api>.onrender.com") + path;
+        el.querySelector(".endpoint-curl").textContent = `curl ${url}`;
+      }
+
+      async function run() {
+        const path = buildPath();
+        const out = el.querySelector(".endpoint-response");
+        out.textContent = "loading...";
+        try {
+          const body = await APIClient.call(path);
+          const { _source, ...display } = body;
+          out.textContent = JSON.stringify(display, null, 2);
+          if (_source === "sample") {
+            out.style.borderLeft = "2px solid var(--accent)";
+          } else {
+            out.style.borderLeft = "2px solid var(--positive)";
+          }
+        } catch (err) {
+          out.textContent = "Error: " + (err.message || String(err));
+          out.style.borderLeft = "2px solid var(--negative)";
+        }
+      }
+
+      updateCurl();
+      return el;
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  })();
+  </script>
+</body>
+</html>

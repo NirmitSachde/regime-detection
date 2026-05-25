@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Backtest — regime-detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a0a0a' stroke='%23232323' stroke-width='2'/%3E%3Cpath d='M12 44L24 30L34 38L52 18' stroke='%23d4a017' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="nav-brand" style="text-decoration:none;color:inherit;border:none;">
+        <span class="logo-mark">RD</span>
+        <span>regime-detection</span>
+      </a>
+      <div class="nav-links">
+        <a data-page="index.html" href="index.html">Home</a>
+        <a data-page="regime.html" href="regime.html">Live Regime</a>
+        <a data-page="implications.html" href="implications.html">Implications</a>
+        <a data-page="backtest.html" href="backtest.html">Backtest</a>
+        <a data-page="api.html" href="api.html">API</a>
+        <a id="nav-api-docs" href="#" target="_blank" rel="noopener">Swagger</a>
+      </div>
+      <span class="live-dot" id="live-indicator" data-mode="loading">
+        <span class="blip"></span><span class="text">loading...</span>
+      </span>
+    </div>
+  </nav>
+
+  <header class="page-hero">
+    <div class="container">
+      <div class="eyebrow">03 / Backtest</div>
+      <h1>Three strategies, six years, walk-forward evaluation.</h1>
+      <p class="lede">Buy-and-hold versus an unconditional 50/200 trend-following rule versus the same trend rule with regime-aware position sizing. Numbers include 1 bp linear slippage and configurable borrow drag on shorts.</p>
+    </div>
+  </header>
+
+  <main class="container" style="padding-bottom: 60px;">
+    <div id="status-banner-slot"></div>
+
+    <div class="panel" style="border-left:3px solid var(--accent);">
+      <div class="panel-head" style="padding-bottom: 12px; margin-bottom: 12px;">
+        <div class="panel-title" style="color:var(--accent);text-transform:uppercase;letter-spacing:.12em;font-size:11px;">
+          Headline
+        </div>
+      </div>
+      <div style="font-size:18px;color:var(--text);line-height:1.5;" id="headline">
+        <span class="skeleton skeleton-line" style="width:70%;"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><strong>Strategy comparison</strong> &nbsp;/&nbsp; risk-adjusted summary</div>
+        <div class="panel-sub" id="bt-asof">—</div>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="strategy-table" id="bt-table">
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th style="text-align:right;">Sharpe</th>
+              <th style="text-align:right;">Sortino</th>
+              <th style="text-align:right;">CAGR</th>
+              <th style="text-align:right;">Max DD</th>
+              <th style="text-align:right;">Calmar</th>
+              <th style="text-align:right;">Final equity</th>
+            </tr>
+          </thead>
+          <tbody id="bt-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><strong>Equity curves</strong> &nbsp;/&nbsp; $100k starting capital</div>
+        <div class="toggle-group" id="strategy-toggle">
+          <button data-strat="all" class="active">All three</button>
+          <button data-strat="compare">Trend vs Regime</button>
+          <button data-strat="regime">Regime only</button>
+        </div>
+      </div>
+      <div id="chart-equity" style="min-height: 420px;"></div>
+    </div>
+
+    <div class="note" id="bt-note" style="display:none;">
+      <strong>Note.</strong> <span id="bt-note-body"></span>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a id="footer-github" href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+        <a id="footer-api" href="#" target="_blank" rel="noopener">API</a>
+        <a id="footer-api-docs" href="#" target="_blank" rel="noopener">Swagger</a>
+        <a id="footer-ref" href="reference/" target="_blank" rel="noopener">Code reference</a>
+        <a href="mailto:sachde.n@northeastern.edu">Email</a>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 Nirmit Sachde &middot; MIT licensed</span>
+        <span>regime-detection v0.1.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="sample_data.js"></script>
+  <script src="api-client.js"></script>
+  <script src="nav.js"></script>
+
+  <script>
+  (async function () {
+    const C = {
+      muted: "#8a8a8a", text: "#ededed", text_2: "#d4d4d4", border: "#232323",
+      border_2: "#2e2e2e", surface: "#141414",
+      positive: "#4a9d6e", negative: "#c14040",
+    };
+    let lastEquity = null;
+
+    function showStatus(source) {
+      const slot = document.getElementById("status-banner-slot");
+      if (source === "sample") {
+        slot.innerHTML = `
+          <div class="status-banner sample">
+            <strong>Sample data.</strong> The numbers below come from a synthetic SPY-like series.
+            Run the pipeline locally and deploy the API for live numbers.
+          </div>`;
+      }
+    }
+
+    async function init() {
+      const d = await APIClient.call("/backtest/summary");
+      showStatus(d._source);
+      renderHeadline(d);
+      renderTable(d);
+      renderEquity();
+      wireToggle();
+
+      if (d.note) {
+        document.getElementById("bt-note").style.display = "block";
+        document.getElementById("bt-note-body").textContent = d.note;
+      }
+      document.getElementById("bt-asof").textContent = "As of " + d.as_of;
+    }
+
+    function renderHeadline(d) {
+      const regime = d.strategies.find((s) => s.name === "regime_conditioned");
+      const trend  = d.strategies.find((s) => s.name === "baseline_trend");
+      const improvement = d.sharpe_improvement;
+      const ddDelta = Math.abs(trend.max_dd_pct) - Math.abs(regime.max_dd_pct);
+      document.getElementById("headline").innerHTML = `
+        The regime overlay raises trend's Sharpe by
+        <strong style="color:var(--positive);">${improvement}×</strong>
+        and cuts max drawdown by
+        <strong style="color:var(--positive);">${ddDelta.toFixed(0)} percentage points</strong>
+        — from ${trend.max_dd_pct.toFixed(0)}% to ${regime.max_dd_pct.toFixed(0)}%.
+      `;
+    }
+
+    function renderTable(d) {
+      const tbody = document.getElementById("bt-tbody");
+      tbody.innerHTML = "";
+      d.strategies.forEach((s) => {
+        const tr = document.createElement("tr");
+        const sharpeC = s.sharpe > 0.5 ? "pos" : s.sharpe < 0.3 ? "neg" : "";
+        tr.innerHTML = `
+          <td class="row-label">${s.label}</td>
+          <td style="text-align:right;" class="${sharpeC}">${s.sharpe.toFixed(2)}</td>
+          <td style="text-align:right;">${s.sortino.toFixed(2)}</td>
+          <td style="text-align:right;" class="${s.cagr_pct >= 0 ? 'pos' : 'neg'}">${(s.cagr_pct >= 0 ? '+' : '')}${s.cagr_pct.toFixed(1)}%</td>
+          <td style="text-align:right;" class="neg">${s.max_dd_pct.toFixed(1)}%</td>
+          <td style="text-align:right;">${s.calmar.toFixed(2)}</td>
+          <td style="text-align:right;">$${Number(s.final_equity).toLocaleString(undefined, {maximumFractionDigits: 0})}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderEquity(strat = "all") {
+      const d = window.SAMPLE_DATA;
+      if (!d) return;
+      const traces = [];
+      if (strat === "all" || strat === "compare") {
+        traces.push({
+          x: d.dates, y: d.baseline_eq, type: "scatter", mode: "lines",
+          name: "trend (unconditional)",
+          line: {color: C.negative, width: 1.6},
+          hovertemplate: "%{x|%b %Y} · $%{y:,.0f}<extra>trend</extra>",
+        });
+      }
+      if (strat === "all" || strat === "compare" || strat === "regime") {
+        traces.push({
+          x: d.dates, y: d.regime_eq, type: "scatter", mode: "lines",
+          name: "trend + regime overlay",
+          line: {color: C.positive, width: 2},
+          fill: strat === "regime" ? "tozeroy" : undefined,
+          fillcolor: strat === "regime" ? "rgba(74,157,110,0.06)" : undefined,
+          hovertemplate: "%{x|%b %Y} · $%{y:,.0f}<extra>regime</extra>",
+        });
+      }
+      if (strat === "all") {
+        traces.unshift({
+          x: d.dates, y: d.buy_hold_eq, type: "scatter", mode: "lines",
+          name: "buy & hold",
+          line: {color: C.muted, width: 1.2, dash: "dash"},
+          hovertemplate: "%{x|%b %Y} · $%{y:,.0f}<extra>B&amp;H</extra>",
+        });
+      }
+
+      const layout = {
+        paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+        font: {family: "Inter", color: C.text_2, size: 11.5},
+        margin: {l: 64, r: 28, t: 24, b: 44}, height: 420,
+        xaxis: {gridcolor: C.border, linecolor: C.border_2,
+                tickfont: {color: C.muted, family: "JetBrains Mono", size: 10.5}},
+        yaxis: {gridcolor: C.border, linecolor: C.border_2, tickprefix: "$", tickformat: ",.0f",
+                tickfont: {color: C.muted, family: "JetBrains Mono", size: 10.5}},
+        legend: {orientation: "h", yanchor: "bottom", y: 1.02, xanchor: "right", x: 1,
+                 font: {color: C.muted, size: 10.5, family: "JetBrains Mono"}},
+        hoverlabel: {bgcolor: C.surface, bordercolor: C.border_2,
+                     font: {color: C.text, family: "JetBrains Mono", size: 11.5}},
+        hovermode: "x unified",
+      };
+      Plotly.react("chart-equity", traces, layout, {displayModeBar: false, responsive: true});
+    }
+
+    function wireToggle() {
+      const group = document.getElementById("strategy-toggle");
+      group.addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        group.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderEquity(btn.dataset.strat);
+      });
+    }
+
+    init().catch((e) => console.error("backtest page init failed", e));
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Regime Implications — regime-detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a0a0a' stroke='%23232323' stroke-width='2'/%3E%3Cpath d='M12 44L24 30L34 38L52 18' stroke='%23d4a017' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="nav-brand" style="text-decoration:none;color:inherit;border:none;">
+        <span class="logo-mark">RD</span>
+        <span>regime-detection</span>
+      </a>
+      <div class="nav-links">
+        <a data-page="index.html" href="index.html">Home</a>
+        <a data-page="regime.html" href="regime.html">Live Regime</a>
+        <a data-page="implications.html" href="implications.html">Implications</a>
+        <a data-page="backtest.html" href="backtest.html">Backtest</a>
+        <a data-page="api.html" href="api.html">API</a>
+        <a id="nav-api-docs" href="#" target="_blank" rel="noopener">Swagger</a>
+      </div>
+      <span class="live-dot" id="live-indicator" data-mode="loading">
+        <span class="blip"></span><span class="text">loading...</span>
+      </span>
+    </div>
+  </nav>
+
+  <header class="page-hero">
+    <div class="container">
+      <div class="eyebrow">02 / Regime Implications</div>
+      <h1>What the model would tell a PM to do.</h1>
+      <p class="lede">Translates the current regime classification into asset-class tilts, in basis points, with rationale for each. Historical performance under the same regime sits alongside, so the recommendation is anchored in what actually happened.</p>
+    </div>
+  </header>
+
+  <main class="container" style="padding-bottom: 60px;">
+    <div id="status-banner-slot"></div>
+
+    <div class="regime-hero" id="hero">
+      <div class="meta"><span class="skeleton skeleton-line" style="width:280px;"></span></div>
+      <div class="headline"><span class="skeleton skeleton-line" style="width:80%;"></span></div>
+      <div class="desc"><span class="skeleton skeleton-line" style="width:90%;"></span></div>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-cell"><div class="label">Risk profile</div><div class="value" id="m-risk">—</div><div class="sub" id="m-risk-sub">—</div></div>
+      <div class="metric-cell"><div class="label">Confidence</div><div class="value" id="m-conf">—</div><div class="sub" id="m-conf-sub">—</div></div>
+      <div class="metric-cell"><div class="label">Days in current run</div><div class="value" id="m-run">—</div><div class="sub" id="m-run-sub">—</div></div>
+      <div class="metric-cell"><div class="label">Avg episode length</div><div class="value" id="m-epi">—</div><div class="sub">historical, this regime</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><strong>Suggested allocation tilt</strong> &nbsp;/&nbsp; bps deviation from a 60/30/10 benchmark</div>
+        <div class="panel-sub">Cash and vol-hedge sleeves taken from the equity bucket when invoked</div>
+      </div>
+      <div class="tilt-grid" id="tilts"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:24px;">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><strong>Historical performance</strong> &nbsp;/&nbsp; <span id="h-regime-label">—</span></div>
+          <div class="panel-sub" id="h-basis">—</div>
+        </div>
+        <div class="metric-row" style="margin-bottom:0;border-radius:6px;">
+          <div class="metric-cell"><div class="label">Ann. return</div><div class="value" id="h-ret">—</div><div class="sub">×252 from mean daily</div></div>
+          <div class="metric-cell"><div class="label">Ann. vol</div><div class="value" id="h-vol">—</div><div class="sub">σ × √252</div></div>
+          <div class="metric-cell"><div class="label">Max DD</div><div class="value neg" id="h-mdd">—</div><div class="sub">peak-to-trough</div></div>
+        </div>
+        <div class="metric-row" style="margin-top:14px;border-radius:6px;">
+          <div class="metric-cell"><div class="label">Hit rate</div><div class="value" id="h-hit">—</div><div class="sub">positive days</div></div>
+          <div class="metric-cell"><div class="label">Median daily</div><div class="value" id="h-med">—</div><div class="sub">in-regime</div></div>
+          <div class="metric-cell"><div class="label">Episodes</div><div class="value" id="h-epi">—</div><div class="sub" id="h-epi-sub">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><strong>Probability vector</strong></div>
+        </div>
+        <div id="probs"></div>
+      </div>
+    </div>
+
+    <div id="alt-slot"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><strong>Caveats and assumptions</strong></div>
+      </div>
+      <ul id="caveats" style="margin:0;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.75;"></ul>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a id="footer-github" href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+        <a id="footer-api" href="#" target="_blank" rel="noopener">API</a>
+        <a id="footer-api-docs" href="#" target="_blank" rel="noopener">Swagger</a>
+        <a id="footer-ref" href="reference/" target="_blank" rel="noopener">Code reference</a>
+        <a href="mailto:sachde.n@northeastern.edu">Email</a>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 Nirmit Sachde &middot; MIT licensed</span>
+        <span>regime-detection v0.1.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="sample_data.js"></script>
+  <script src="api-client.js"></script>
+  <script src="nav.js"></script>
+
+  <script>
+  (async function () {
+    const SHORT = {0: "Bull", 1: "Chop", 2: "Bear"};
+    const RISK_CLASS = {"Risk-On": "risk-on", "Risk-Off": "risk-off", "Neutral": "neutral"};
+    const TILT_KEY = {"Overweight": "ow", "Underweight": "uw", "Neutral": "n"};
+
+    function showStatus(source) {
+      const slot = document.getElementById("status-banner-slot");
+      if (source === "sample") {
+        slot.innerHTML = `
+          <div class="status-banner sample">
+            <strong>Sample data.</strong> Showing synthetic regime + allocation guidance.
+            Deploy the FastAPI and set <code>API_BASE</code> in <code>config.js</code> to
+            see the model's live output here.
+          </div>`;
+      }
+    }
+
+    async function init() {
+      const d = await APIClient.call("/regime/implications/latest");
+      showStatus(d._source);
+      renderHero(d);
+      renderMetrics(d);
+      renderTilts(d.allocation);
+      renderHistorical(d);
+      renderProbs(d.probabilities);
+      renderAlt(d.alternative);
+      renderCaveats(d.caveats);
+    }
+
+    function renderHero(d) {
+      const hero = document.getElementById("hero");
+      hero.className = "regime-hero " + (RISK_CLASS[d.risk_profile] || "neutral");
+      hero.innerHTML = `
+        <div class="meta">
+          As of ${d.as_of}
+          <span class="sep">/</span>
+          ${d.regime_label}
+          <span class="sep">/</span>
+          ${d.risk_profile}
+        </div>
+        <div class="headline">${d.headline}</div>
+        <div class="desc">${d.description}</div>
+      `;
+    }
+
+    function renderMetrics(d) {
+      document.getElementById("m-risk").textContent = d.risk_profile;
+      const rc = document.getElementById("m-risk");
+      rc.className = "value " + (d.risk_profile === "Risk-On" ? "pos" : d.risk_profile === "Risk-Off" ? "neg" : "");
+      document.getElementById("m-risk-sub").textContent = d.regime_label;
+      document.getElementById("m-conf").textContent = (d.confidence * 100).toFixed(0) + "%";
+      document.getElementById("m-conf-sub").textContent = d.confidence_label;
+      document.getElementById("m-run").textContent = d.days_in_current_run ?? "—";
+      document.getElementById("m-run-sub").textContent = "consecutive days";
+      document.getElementById("m-epi").textContent = (d.historical.avg_duration_days || 0).toFixed(0) + "d";
+    }
+
+    function renderTilts(allocation) {
+      const grid = document.getElementById("tilts");
+      grid.innerHTML = "";
+      allocation.forEach((t) => {
+        const key = TILT_KEY[t.tilt] || "n";
+        const sign = t.bps > 0 ? "+" : t.bps < 0 ? "" : "";
+        const card = document.createElement("div");
+        card.className = "tilt-card";
+        card.innerHTML = `
+          <div class="asset">${t.asset_class}</div>
+          <div class="tilt ${key}">${t.tilt}</div>
+          <div class="bps ${key}">${sign}${t.bps} bps</div>
+          <div class="mag">${t.magnitude}</div>
+          <div class="rat">${t.rationale}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function renderHistorical(d) {
+      const h = d.historical;
+      document.getElementById("h-regime-label").textContent = d.regime_label;
+      document.getElementById("h-basis").textContent = h.sample_basis;
+      const ret = h.annualized_return_pct;
+      const retEl = document.getElementById("h-ret");
+      retEl.textContent = (ret >= 0 ? "+" : "") + ret.toFixed(1) + "%";
+      retEl.className = "value " + (ret > 0 ? "pos" : ret < 0 ? "neg" : "");
+      document.getElementById("h-vol").textContent = h.annualized_vol_pct.toFixed(1) + "%";
+      document.getElementById("h-mdd").textContent = h.max_drawdown_pct.toFixed(1) + "%";
+      document.getElementById("h-hit").textContent = h.hit_rate_pct.toFixed(0) + "%";
+      const med = h.median_daily_return_pct;
+      const medEl = document.getElementById("h-med");
+      medEl.textContent = (med >= 0 ? "+" : "") + med.toFixed(3) + "%";
+      medEl.className = "value " + (med > 0 ? "pos" : med < 0 ? "neg" : "");
+      document.getElementById("h-epi").textContent = h.n_episodes;
+      document.getElementById("h-epi-sub").textContent = h.total_days + " total days";
+    }
+
+    function renderProbs(probs) {
+      const target = document.getElementById("probs");
+      target.innerHTML = "";
+      [0, 1, 2].forEach((s) => {
+        const p = probs[String(s)] || 0;
+        const row = document.createElement("div");
+        row.className = "prob-row";
+        row.innerHTML = `
+          <div class="label">${SHORT[s]}</div>
+          <div class="prob-bar"><div class="fill s${s}" style="width:${(p*100).toFixed(1)}%"></div></div>
+          <div class="pct">${(p*100).toFixed(0)}%</div>
+        `;
+        target.appendChild(row);
+      });
+    }
+
+    function renderAlt(alt) {
+      const slot = document.getElementById("alt-slot");
+      if (!alt) { slot.innerHTML = ""; return; }
+      const klass = RISK_CLASS[alt.risk_profile] || "neutral";
+      slot.innerHTML = `
+        <div class="panel" style="border-left: 3px solid var(--accent);">
+          <div class="panel-head" style="padding-bottom:14px;margin-bottom:14px;">
+            <div class="panel-title" style="color:var(--accent);text-transform:uppercase;letter-spacing:.12em;font-size:11px;">
+              Alternative scenario &nbsp;/&nbsp; ${(alt.probability * 100).toFixed(0)}% probability
+            </div>
+          </div>
+          <div style="font-size:16px;color:var(--text);margin-bottom:8px;font-weight:500;">
+            ${alt.regime_label} (${alt.risk_profile})
+          </div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.6;">
+            ${alt.headline_change}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCaveats(caveats) {
+      const ul = document.getElementById("caveats");
+      ul.innerHTML = "";
+      caveats.forEach((c) => {
+        const li = document.createElement("li");
+        li.style.marginBottom = "10px";
+        li.textContent = c;
+        ul.appendChild(li);
+      });
+    }
+
+    init().catch((e) => console.error("implications page init failed", e));
+  })();
+  </script>
+</body>
+</html>

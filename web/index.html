@@ -20,15 +20,17 @@
   <!-- ============ NAV ============ -->
   <nav class="nav">
     <div class="container nav-inner">
-      <div class="nav-brand">
+      <a href="index.html" class="nav-brand" style="text-decoration:none;color:inherit;border:none;">
         <span class="logo-mark">RD</span>
         <span>regime-detection</span>
-      </div>
+      </a>
       <div class="nav-links">
-        <a href="#how">How it works</a>
-        <a href="#demo">Demo</a>
-        <a id="nav-api" href="#" target="_blank" rel="noopener">API</a>
-        <a id="nav-ref" href="reference/" target="_blank" rel="noopener">Reference</a>
+        <a data-page="index.html" href="index.html">Home</a>
+        <a data-page="regime.html" href="regime.html">Live Regime</a>
+        <a data-page="implications.html" href="implications.html">Implications</a>
+        <a data-page="backtest.html" href="backtest.html">Backtest</a>
+        <a data-page="api.html" href="api.html">API</a>
+        <a id="nav-api-docs" href="#" target="_blank" rel="noopener">Swagger</a>
       </div>
       <a class="nav-cta" id="nav-github" href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
     </div>
@@ -201,6 +203,8 @@
 
   <script src="config.js"></script>
   <script src="sample_data.js"></script>
+  <script src="api-client.js"></script>
+  <script src="nav.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

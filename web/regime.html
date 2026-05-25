@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Regime — regime-detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%230a0a0a' stroke='%23232323' stroke-width='2'/%3E%3Cpath d='M12 44L24 30L34 38L52 18' stroke='%23d4a017' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="nav-brand" style="text-decoration:none;color:inherit;border:none;">
+        <span class="logo-mark">RD</span>
+        <span>regime-detection</span>
+      </a>
+      <div class="nav-links">
+        <a data-page="index.html" href="index.html">Home</a>
+        <a data-page="regime.html" href="regime.html">Live Regime</a>
+        <a data-page="implications.html" href="implications.html">Implications</a>
+        <a data-page="backtest.html" href="backtest.html">Backtest</a>
+        <a data-page="api.html" href="api.html">API</a>
+        <a id="nav-api-docs" href="#" target="_blank" rel="noopener">Swagger</a>
+      </div>
+      <span class="live-dot" id="live-indicator" data-mode="loading">
+        <span class="blip"></span><span class="text">loading...</span>
+      </span>
+    </div>
+  </nav>
+
+  <header class="page-hero">
+    <div class="container">
+      <div class="eyebrow">01 / Live Regime</div>
+      <h1>Where the model thinks we are.</h1>
+      <p class="lede">The latest regime classification from the Gaussian HMM, the probability vector it returns, and the most recent ninety days of states laid out on a timeline.</p>
+    </div>
+  </header>
+
+  <main class="container" style="padding-bottom: 60px;">
+    <div id="status-banner-slot"></div>
+
+    <div class="regime-hero" id="hero">
+      <div class="meta"><span class="skeleton skeleton-line" style="width:280px;"></span></div>
+      <div class="headline"><span class="skeleton skeleton-line" style="width:60%;"></span></div>
+      <div class="desc"><span class="skeleton skeleton-line" style="width:90%;"></span></div>
+    </div>
+
+    <div class="metric-row" id="metrics">
+      <div class="metric-cell"><div class="label">Regime</div><div class="value" id="m-regime">—</div><div class="sub" id="m-regime-label">—</div></div>
+      <div class="metric-cell"><div class="label">Confidence</div><div class="value" id="m-conf">—</div><div class="sub" id="m-conf-label">—</div></div>
+      <div class="metric-cell"><div class="label">Price</div><div class="value" id="m-price">—</div><div class="sub">SPY close</div></div>
+      <div class="metric-cell"><div class="label">As of</div><div class="value" id="m-asof" style="font-size: 18px;">—</div><div class="sub">latest classified day</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><strong>Probability vector</strong> &nbsp;/&nbsp; where the model's mass is sitting today</div>
+      </div>
+      <div id="probs"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><strong>Last 90 days</strong> &nbsp;/&nbsp; daily regime classification</div>
+        <div class="panel-sub" id="tl-range">—</div>
+      </div>
+      <div class="timeline" id="timeline"></div>
+      <div class="demo-legend" style="margin-top: 8px;">
+        <span><span class="swatch" style="background:#4a9d6e"></span>Bull / low-vol</span>
+        <span><span class="swatch" style="background:#a8a29e"></span>Neutral / chop</span>
+        <span><span class="swatch" style="background:#c14040"></span>Bear / high-vol</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><strong>Regime distribution</strong> &nbsp;/&nbsp; how much time has been spent in each state</div>
+        <div class="panel-sub" id="dist-asof">—</div>
+      </div>
+      <div class="dist-grid">
+        <div id="dist-chart" style="min-height:200px;"></div>
+        <div class="dist-legend" id="dist-legend"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a id="footer-github" href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+        <a id="footer-api" href="#" target="_blank" rel="noopener">API</a>
+        <a id="footer-api-docs" href="#" target="_blank" rel="noopener">Swagger</a>
+        <a id="footer-ref" href="reference/" target="_blank" rel="noopener">Code reference</a>
+        <a href="mailto:sachde.n@northeastern.edu">Email</a>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 Nirmit Sachde &middot; MIT licensed</span>
+        <span>regime-detection v0.1.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="sample_data.js"></script>
+  <script src="api-client.js"></script>
+  <script src="nav.js"></script>
+
+  <script>
+  (async function () {
+    const REGIME_COLOR = {0: "#4a9d6e", 1: "#a8a29e", 2: "#c14040"};
+    const SHORT = {0: "Bull", 1: "Chop", 2: "Bear"};
+    const RISK = {0: "Risk-On", 1: "Neutral", 2: "Risk-Off"};
+
+    function showStatus(source) {
+      const slot = document.getElementById("status-banner-slot");
+      if (source === "sample") {
+        slot.innerHTML = `
+          <div class="status-banner sample">
+            <strong>Sample data.</strong> The live API isn't configured or is unreachable.
+            Set <code>API_BASE</code> in <code>config.js</code> to point at your deployed
+            FastAPI service. Until then, all panels render from baked-in synthetic data.
+          </div>`;
+      }
+    }
+
+    async function init() {
+      const latest = await APIClient.call("/regime/latest");
+      showStatus(latest._source);
+      renderHero(latest);
+      renderMetrics(latest);
+      renderProbs(latest.probabilities);
+
+      const history = await APIClient.call("/regime/history?limit=90");
+      renderTimeline(history.items);
+
+      const dist = await APIClient.call("/regime/distribution");
+      renderDistribution(dist);
+    }
+
+    function renderHero(d) {
+      const hero = document.getElementById("hero");
+      const risk = RISK[d.regime] || "Neutral";
+      const klass = risk === "Risk-On" ? "risk-on" : risk === "Risk-Off" ? "risk-off" : "neutral";
+      hero.className = "regime-hero " + klass;
+      hero.innerHTML = `
+        <div class="meta">As of ${d.date} <span class="sep">/</span> ${d.regime_label}</div>
+        <div class="headline">The market currently looks like a ${d.regime_label.toLowerCase()} regime (${risk}).</div>
+        <div class="desc">Top probability is on state ${d.regime} (${SHORT[d.regime]}) at ${(d.probabilities[String(d.regime)] * 100).toFixed(0)}%. See the bars below for the full vector and the strip for the last 90 days of classifications.</div>
+      `;
+    }
+
+    function renderMetrics(d) {
+      const regimeEl = document.getElementById("m-regime");
+      regimeEl.textContent = SHORT[d.regime] ?? d.regime;
+      regimeEl.className = "value";
+      if (d.regime === 0) regimeEl.classList.add("pos");
+      else if (d.regime === 2) regimeEl.classList.add("neg");
+      document.getElementById("m-regime-label").textContent = d.regime_label;
+      const conf = d.probabilities[String(d.regime)];
+      document.getElementById("m-conf").textContent = (conf * 100).toFixed(0) + "%";
+      document.getElementById("m-conf-label").textContent = conf >= 0.75 ? "High" : conf >= 0.5 ? "Medium" : "Low";
+      document.getElementById("m-price").textContent = "$" + Number(d.price).toFixed(2);
+      document.getElementById("m-asof").textContent = d.date;
+    }
+
+    function renderProbs(probs) {
+      const target = document.getElementById("probs");
+      target.innerHTML = "";
+      [0, 1, 2].forEach((s) => {
+        const p = probs[String(s)] || 0;
+        const row = document.createElement("div");
+        row.className = "prob-row";
+        row.innerHTML = `
+          <div class="label">${SHORT[s]}</div>
+          <div class="prob-bar"><div class="fill s${s}" style="width:${(p*100).toFixed(1)}%"></div></div>
+          <div class="pct">${(p*100).toFixed(0)}%</div>
+        `;
+        target.appendChild(row);
+      });
+    }
+
+    function renderTimeline(items) {
+      const tl = document.getElementById("timeline");
+      tl.innerHTML = "";
+      if (!items.length) return;
+      items.forEach((it) => {
+        const d = document.createElement("div");
+        d.className = "day";
+        d.dataset.s = it.regime;
+        d.title = `${it.date} - ${it.regime_label}`;
+        tl.appendChild(d);
+      });
+      document.getElementById("tl-range").textContent =
+        `${items[0].date} - ${items[items.length-1].date}`;
+    }
+
+    function renderDistribution(d) {
+      document.getElementById("dist-asof").textContent = `As of ${d.as_of} (${d.total_days} days)`;
+      // Donut chart with Plotly
+      const fig = {
+        data: [{
+          type: "pie",
+          hole: 0.6,
+          values: d.states.map((s) => s.n_days),
+          labels: d.states.map((s) => SHORT[s.state]),
+          marker: {colors: d.states.map((s) => REGIME_COLOR[s.state])},
+          textinfo: "percent",
+          hoverinfo: "label+value+percent",
+          textfont: {color: "#0a0a0a", family: "JetBrains Mono", size: 12},
+        }],
+        layout: {
+          paper_bgcolor: "rgba(0,0,0,0)",
+          plot_bgcolor: "rgba(0,0,0,0)",
+          showlegend: false,
+          margin: {l: 0, r: 0, t: 0, b: 0},
+          height: 200,
+        },
+      };
+      Plotly.react("dist-chart", fig.data, fig.layout, {displayModeBar: false, responsive: true});
+
+      const legend = document.getElementById("dist-legend");
+      legend.innerHTML = "";
+      d.states.forEach((s) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `
+          <div class="sw" style="background:${REGIME_COLOR[s.state]}"></div>
+          <div class="label">${s.label}</div>
+          <div class="days">${s.n_days} d</div>
+          <div class="pct">${s.pct}%</div>
+        `;
+        legend.appendChild(row);
+      });
+    }
+
+    init().catch((e) => console.error("regime page init failed", e));
+  })();
+  </script>
+</body>
+</html>

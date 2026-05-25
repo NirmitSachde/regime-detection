@@ -236,35 +236,9 @@
     els.forEach(el => io.observe(el));
   }
 
-  // ---------- Config-driven links ----------
-  function wireConfigLinks() {
-    const cfg = window.SITE_CONFIG || {};
-
-    const apiBase = (cfg.API_BASE || "").replace(/\/+$/, "");
-    const githubUrl = cfg.GITHUB_URL || "";
-
-    function setLink(id, href, hideIfEmpty) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      if (!href) {
-        if (hideIfEmpty) el.style.display = "none";
-        return;
-      }
-      el.href = href;
-    }
-
-    setLink("nav-api",         apiBase ? apiBase + "/docs"  : "", true);
-    setLink("nav-ref",         "reference/",                false);
-    setLink("nav-github",      githubUrl,                   true);
-    setLink("footer-api",      apiBase,                     true);
-    setLink("footer-api-docs", apiBase ? apiBase + "/docs"  : "", true);
-    setLink("footer-ref",      "reference/",                false);
-    setLink("footer-github",   githubUrl,                   true);
-  }
-
   // ---------- Init ----------
   function init() {
-    wireConfigLinks();
+    // Config-driven links + nav active state handled by nav.js.
     fillStats();
     renderPriceChart("regime");
     renderEquityChart("all");
