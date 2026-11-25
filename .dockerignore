@@ -35,7 +35,6 @@ mlruns/
 # Project meta / dev only
 .git/
 .github/
-.claude/
 01_handoff_*.md
 01_proposal_*.md
 README.md

@@ -12,7 +12,7 @@ Everything is free. No credit card required.
 
 ## 0. One-time GitHub setup
 
-Push the repo. Do **not** add Claude or any AI assistant as a repo collaborator.
+Push the repo.
 
 ```bash
 cd "regime detection"
